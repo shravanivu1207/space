@@ -116,6 +116,10 @@ button.fix{background:linear-gradient(90deg,#2bb673,#1f9d8a);border-color:#2bb67
 .cmp th,.cmp td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;font-variant-numeric:tabular-nums}
 .cmp th{color:var(--muted);font-weight:500}
 .cmp td.best{color:var(--good);font-weight:700}
+.cmpwin{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(61,220,132,.1);border:1px solid rgba(61,220,132,.45);font-size:13px}
+.cmpwarn{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(255,193,69,.1);border:1px solid rgba(255,193,69,.45);font-size:12px}
+.cmpstr{margin:8px 0 0;padding-left:18px;font-size:12px;color:#c9d0de}
+.cmpnote{margin-top:6px;font-size:12px;color:var(--muted)}
 .empty{color:var(--muted);font-size:12px;padding:8px 0}
 details summary{cursor:pointer;color:var(--muted);font-size:12px}
 details p,details li{font-size:12px;color:#c3cad9}
@@ -321,6 +325,7 @@ details p,details li{font-size:12px;color:#c3cad9}
   </div>
 </div></div>
 <div class="toast" id="toast"></div>
+<div id="errbar" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:90;background:#3a1218;border:1px solid var(--bad);color:#ffd6db;border-radius:10px;padding:10px 12px;font-size:12px"></div>
 <div class="tourpop" id="tourpop" role="dialog" aria-live="polite">
   <div class="tstep" id="tStep"></div>
   <div class="ttitle" id="tTitle"></div>
@@ -329,6 +334,12 @@ details p,details li{font-size:12px;color:#c3cad9}
 </div>
  
 <script>
+/* If anything crashes, show the message on screen (helps when debugging in VS Code / GitHub Pages) */
+window.addEventListener('error', e => {
+  const bar = document.getElementById('errbar'); if (!bar) return;
+  bar.style.display = 'block';
+  bar.innerHTML = `⚠️ Something went wrong: <b>${String(e.message).replace(/</g,'&lt;')}</b> (line ${e.lineno}). Try a hard refresh (Ctrl+Shift+R). If it keeps happening, send a screenshot of this message. <button onclick="this.parentNode.style.display='none'" style="margin-left:8px">Close</button>`;
+});
 /* ===================== CONFIG ===================== */
 const ZONES = {
   sleep:    {name:'Sleep',        color:'#5b7cfa', key:'1'},
@@ -858,7 +869,9 @@ function analyze(){
     deckWays, deckIssue, exitsShort,
     cost: costOf(totalVol, S.structure),
     stats:{interior, nhv, totalVol, mass: costOf(totalVol, S.structure).kg, launch: costOf(totalVol, S.structure).usd, perCrew:nhv/S.crew, circ, conflicts,
-      maxEgress: worstCell>=0?Math.round(dist[worstCell]):null, exits:exits.length, decks:D, ladders:shafts}};
+      maxEgress: worstCell>=0?Math.round(dist[worstCell]):null, exits:exits.length, decks:D, ladders:shafts,
+      sleepNoise: count.sleep ? Math.max(...idxOf('sleep').map(i=>noiseMap[i])) : null,
+      issues: checks.filter(c=>c.status!=='pass').length}};
 }
  
 /* ===================== RENDER ===================== */
@@ -1375,8 +1388,17 @@ $('#btnUndo').onclick = undo;
 $('#btnClear').onclick = () => { pushHistory(); S.cells = S.cells.map(()=>null); refresh(); };
  
 /* ===================== SAVE / COMPARE ===================== */
-function loadStore(){ try { const v = localStorage.getItem(STORE_KEY); if (v) return JSON.parse(v); } catch(e){} return memStore; }
-function saveStore(list){ memStore = list; try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch(e){} }
+const validLayout = L => !!(L && typeof L === 'object' && Array.isArray(L.cells) && SHAPES[L.shape] && +L.a > 0 && +L.crew > 0 && +L.days > 0);
+function loadStore(){
+  try { const v = localStorage.getItem(STORE_KEY); if (v){ const list = JSON.parse(v); if (Array.isArray(list)) return list.filter(validLayout); } } catch(e){}
+  return memStore.filter(validLayout);
+}
+let storageOK = true;
+function saveStore(list){
+  memStore = list;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); storageOK = true; }
+  catch(e){ storageOK = false; }
+}
 function snapshot(name){
   return {id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), name, savedAt:new Date().toISOString(),
     crew:S.crew, days:S.days, shape:S.shape, a:S.a, b:S.b, height:S.height, structure:S.structure, decks:S.decks||1, cells:[...S.cells],
@@ -1386,7 +1408,8 @@ $('#btnSave').onclick = () => {
   const list = loadStore();
   const name = $('#saveName').value.trim() || `Layout ${list.length+1}`;
   list.push(snapshot(name)); saveStore(list); $('#saveName').value='';
-  renderSaved(); toast(`Saved "${name}"`);
+  renderSaved();
+  toast(storageOK ? `Saved "${name}"` : `Saved "${name}" for now: this browser blocks permanent saving, so use Export JSON to keep it`);
 };
 // Thumbnail of a layout; with several decks they are drawn side by side (deck 1 on the left).
 function drawThumb(cv, L, size=180, mark=null){
@@ -1400,16 +1423,27 @@ function drawThumb(cv, L, size=180, mark=null){
     for (const i of mark){ const lw = ctx.lineWidth, [px,py] = pos(i); ctx.strokeRect(px + lw/2, py + lw/2, s - lw - .5, s - lw - .5); } }
 }
 function renderSaved(){
+  const box = $('#saved');
+  try { renderSavedInner(); }
+  catch(err){
+    console.error(err);
+    box.innerHTML = `<div class="empty" style="color:var(--bad)">⚠️ The saved layouts could not be shown (${esc(err.message)}). Use <b>Export JSON</b> to keep a copy, then the <b>Clear saved layouts</b> button below to reset.</div>
+      <button class="small" id="btnClearSaved" style="margin-top:6px">Clear saved layouts</button>`;
+    $('#btnClearSaved').onclick = () => { saveStore([]); compareSel.clear(); renderSaved(); toast('Saved layouts cleared'); };
+  }
+}
+function renderSavedInner(){
   const list = loadStore(), box = $('#saved');
   [...compareSel].forEach(id => { if (!list.find(l=>l.id===id)) compareSel.delete(id); });
   if (!list.length){ box.innerHTML = '<div class="empty">No saved layouts yet. Save a few variations, then tick them to compare side by side.</div>'; $('#compare').innerHTML=''; return; }
   box.innerHTML = list.map(L => `<div class="sv ${compareSel.has(L.id)?'sel':''}" data-id="${L.id}">
     <canvas></canvas>
-    <div class="row" style="align-items:center"><div style="min-width:0"><div class="nm">${esc(L.name)}</div><div class="mt">${L.crew} crew · ${L.days} d · ${SHAPES[L.shape].name}${(L.decks||1)>1?` · ${L.decks} decks`:''}</div></div><div class="sc" style="flex:none;color:${L.total>=75?'var(--good)':L.total>=50?'var(--warn)':'var(--bad)'}">${L.total}</div></div>
+    <div class="row" style="align-items:center"><div style="min-width:0"><div class="nm">${esc(L.name)}</div><div class="mt">${L.crew} crew · ${L.days} d · ${(SHAPES[L.shape]||{name:L.shape}).name}${(L.decks||1)>1?` · ${L.decks} decks`:''}</div></div><div class="sc" style="flex:none;color:${L.total>=75?'var(--good)':L.total>=50?'var(--warn)':'var(--bad)'}">${L.total ?? '—'}</div></div>
     <div class="bt"><label style="font-size:12px;display:flex;gap:4px;align-items:center;flex:1"><input type="checkbox" data-cmp ${compareSel.has(L.id)?'checked':''}> Compare</label>
     <button class="small" data-load>Load</button><button class="small" data-del>✕</button></div></div>`).join('');
-  box.querySelectorAll('.sv').forEach(el => drawThumb(el.querySelector('canvas'), list.find(l=>l.id===el.dataset.id)));
-  renderCompare(list);
+  box.querySelectorAll('.sv').forEach(el => { try { drawThumb(el.querySelector('canvas'), list.find(l=>l.id===el.dataset.id)); } catch(e){ console.error(e); } });
+  try { renderCompare(list); }
+  catch(err){ console.error(err); $('#compare').innerHTML = `<div class="empty" style="color:var(--bad)">⚠️ Could not compare these layouts (${esc(err.message)}).</div>`; }
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 $('#saved').addEventListener('click', e => {
@@ -1426,24 +1460,88 @@ $('#saved').addEventListener('click', e => {
     saveStore(list.filter(l=>l.id!==id)); compareSel.delete(id); renderSaved();
   }
 });
+// Re-analyse a saved layout with the current rules (so old saves and new saves are compared the same way)
+function analyzeLayout(L){
+  const S0 = S, G0 = G;
+  try {
+    S = {crew:L.crew, days:L.days, shape:L.shape, a:L.a, b:L.b, height:L.height, structure:L.structure||'rigid', decks:L.decks||1, cells:[...L.cells]};
+    G = geometry(S);
+    return analyze();
+  } finally { S = S0; G = G0; }
+}
+// Ranking used to pick the best layout. Score first; if scores tie, these decide in this order.
+const RANK = [
+  {key:'total',      name:'higher total score',              better:'high', show:v=>v,                 round:v=>v},
+  {key:'sleepNoise', name:'quieter sleep area',              better:'low',  show:v=>v==null?'—':fmt(v,1)+' dBA', round:v=>v==null?999:Math.round(v*10)/10},
+  {key:'maxEgress',  name:'shorter escape route',            better:'low',  show:v=>v==null?'—':v+' m', round:v=>v==null?999:v},
+  {key:'perCrew',    name:'more living space per person',    better:'high', show:v=>fmt(v)+' m³',     round:v=>Math.round(v*10)/10},
+  {key:'launch',     name:'lower launch cost',               better:'low',  show:v=>money(v),          round:v=>Math.round(v/1e5)},
+  {key:'issues',     name:'fewer warnings',                  better:'low',  show:v=>v,                 round:v=>v},
+];
+function rankValue(r, k){ return k==='total' ? r.a.total : r.a.stats[k]; }
+function compareRank(x, y){
+  for (const c of RANK){
+    const vx = c.round(rankValue(x,c.key)), vy = c.round(rankValue(y,c.key));
+    if (vx !== vy) return c.better==='high' ? vy - vx : vx - vy;
+  }
+  return 0;
+}
+function compareBanner(rs){
+  const L = r => `<b>"${esc(r.L.name)}"</b>`;
+  const missions = new Set(rs.map(r => `${r.L.crew} crew · ${r.L.days} days`));
+  let html = '';
+  if (missions.size > 1) html += `<div class="cmpwarn">⚠️ These layouts are for <b>different missions</b> (${[...missions].join(' vs ')}), so each is scored against different rules. For a fair comparison, use the same crew size and mission length.</div>`;
+  const sorted = [...rs].sort(compareRank), win = sorted[0], second = sorted[1];
+  if (compareRank(win, second) === 0){
+    html += `<div class="cmpwin">🤝 <b>It's a tie.</b> These layouts are equally good on everything we rank: score, sleep noise, escape distance, living space, cost and warnings.</div>`;
+  } else {
+    const c = RANK.find(c => c.round(rankValue(win,c.key)) !== c.round(rankValue(second,c.key)));
+    const vals = `${c.show(rankValue(win,c.key))} vs ${c.show(rankValue(second,c.key))}`;
+    const why = c.key === 'total'
+      ? `it has the ${c.name} (${vals}).`
+      : `scores are tied at ${win.a.total}, so the tie-break decides: it has a <b>${c.name}</b> (${vals}).`;
+    html += `<div class="cmpwin">🏆 <b>Best overall:</b> ${L(win)}, because ${why}</div>`;
+  }
+  // what each layout is better at (so the user can choose by priority)
+  const strengths = rs.map(r => {
+    const wins = RANK.filter(c => c.key!=='total' && c.key!=='issues').filter(c => {
+      const mine = c.round(rankValue(r,c.key)), others = rs.filter(o=>o!==r).map(o=>c.round(rankValue(o,c.key)));
+      return others.every(o => c.better==='high' ? mine > o : mine < o);
+    }).map(c => c.name);
+    return wins.length ? `<li>${L(r)} is better for: ${wins.join(', ')}</li>` : '';
+  }).join('');
+  if (strengths) html += `<ul class="cmpstr">${strengths}</ul>`;
+  const launches = rs.map(r => Math.round(r.a.stats.launch/1e5));
+  if (new Set(launches).size > 1){
+    const cheap = rs.reduce((m,r) => r.a.stats.launch < m.a.stats.launch ? r : m);
+    html += `<div class="cmpnote">💰 Cheapest to launch: ${L(cheap)} (${money(cheap.a.stats.launch)})</div>`;
+  } else html += `<div class="cmpnote">💰 Same launch cost (${money(rs[0].a.stats.launch)}): the hull is the same size, only the inside differs.</div>`;
+  return html;
+}
 function renderCompare(list){
   const sel = list.filter(l => compareSel.has(l.id));
   if (sel.length < 2){ $('#compare').innerHTML = list.length>=2 ? '<div class="empty">Tick 2–3 layouts to compare them.</div>' : ''; return; }
+  const rs = sel.map(L => ({L, a: analyzeLayout(L)}));
   const rows = [
-    ['Total score', L=>L.total, 'max', v=>v],
-    ...Object.keys(WEIGHTS).map(k => [CAT_NAMES[k], L=>Math.round(L.cats[k]*WEIGHTS[k]), 'max', v=>`${v}/${WEIGHTS[k]}`]),
-    ['Volume per crew', L=>L.stats.perCrew, 'max', v=>fmt(v)+' m³'],
-    ['Habitable volume', L=>L.stats.nhv, 'min', v=>fmt(v,0)+' m³ (smaller = cheaper)'],
-    ['Structure mass', L=>L.stats.mass ?? costOf(L.stats.totalVol, L.structure).kg, 'min', v=>tonnes(v)],
-    ['Launch cost', L=>L.stats.launch ?? costOf(L.stats.totalVol, L.structure).usd, 'min', v=>money(v)],
-    ['Conflicting neighbours', L=>L.stats.conflicts, 'min', v=>v],
-    ['Longest escape', L=>L.stats.maxEgress ?? 999, 'min', v=>v===999?'—':v+' m'],
-    ['Exits', L=>L.stats.exits, 'max', v=>v],
-    ['Decks', L=>L.decks||1, 'none', v=>v],
+    ['Total score', r=>r.a.total, 'max', v=>v],
+    ...Object.keys(WEIGHTS).map(k => [CAT_NAMES[k], r=>Math.round(r.a.cats[k]*WEIGHTS[k]), 'max', v=>`${v}/${WEIGHTS[k]}`]),
+    ['Sleep noise (loudest point)', r=>r.a.stats.sleepNoise==null?999:Math.round(r.a.stats.sleepNoise*10)/10, 'min', v=>v===999?'—':fmt(v,1)+' dBA'],
+    ['Living volume per person', r=>Math.round(r.a.stats.perCrew*10)/10, 'max', v=>fmt(v)+' m³'],
+    ['Living volume (total)', r=>Math.round(r.a.stats.nhv), 'none', v=>fmt(v,0)+' m³'],
+    ['Hull volume (what you launch)', r=>Math.round(r.a.stats.totalVol), 'min', v=>fmt(v,0)+' m³'],
+    ['Structure mass', r=>Math.round(r.a.stats.mass/100)/10, 'min', v=>fmt(v,1)+' t'],
+    ['Launch cost', r=>Math.round(r.a.stats.launch/1e5)/10, 'min', v=>'$'+fmt(v,1)+' M'],
+    ['Storage', r=>r.a.count.storage, 'none', v=>v+' m²'],
+    ['Conflicting neighbours', r=>r.a.stats.conflicts, 'min', v=>v],
+    ['Longest escape', r=>r.a.stats.maxEgress ?? 999, 'min', v=>v===999?'—':v+' m'],
+    ['Exits', r=>r.a.stats.exits, 'max', v=>v],
+    ['Decks', r=>r.L.decks||1, 'none', v=>v],
   ];
-  $('#compare').innerHTML = `<table class="cmp"><thead><tr><th></th>${sel.map(L=>`<th>${esc(L.name)}<br><span style="font-size:11px">${L.crew} crew · ${L.days} d</span></th>`).join('')}</tr></thead><tbody>` +
-    rows.map(([lab,get,dir,f]) => { const vals = sel.map(get); const best = dir==='none' ? NaN : dir==='max'?Math.max(...vals):Math.min(...vals);
-      return `<tr><th>${lab}</th>${vals.map(v=>`<td class="${v===best && new Set(vals).size>1?'best':''}">${f(v)}</td>`).join('')}</tr>`; }).join('') + '</tbody></table>';
+  $('#compare').innerHTML = compareBanner(rs) +
+    `<table class="cmp"><thead><tr><th></th>${rs.map(r=>`<th>${esc(r.L.name)}<br><span style="font-size:11px">${r.L.crew} crew · ${r.L.days} d</span></th>`).join('')}</tr></thead><tbody>` +
+    rows.map(([lab,get,dir,f]) => { const vals = rs.map(get); const best = dir==='none' ? NaN : dir==='max'?Math.max(...vals):Math.min(...vals);
+      return `<tr><th>${lab}</th>${vals.map(v=>`<td class="${v===best && new Set(vals).size>1?'best':''}">${f(v)}</td>`).join('')}</tr>`; }).join('') + '</tbody></table>' +
+    `<div class="cmpnote" style="margin-top:6px">Green = best in that row. Tie-break order when scores are equal: quieter sleep → shorter escape → more living space per person → lower launch cost → fewer warnings.</div>`;
 }
  
 /* Export / import via modal (downloads are blocked in some viewers) */
@@ -1697,11 +1795,12 @@ window.addEventListener('resize', () => { if (tourI>=0) tourShow(tourI); });
  
 /* ===================== INIT ===================== */
 G = geometry(S); S.cells = new Array(G.W*G.H).fill(null);
-syncInputs(); buildGrid(); loadExample(false); history = [];
-renderSaved();
+try { syncInputs(); buildGrid(); loadExample(false); history = []; }
+finally { renderSaved(); }
 let tourDone = false; try { tourDone = localStorage.getItem('habitat-tour-done') === '1'; } catch(e){}
 if (!tourDone) setTimeout(() => tourShow(0), 500);
 </script>
 </body>
 </html>
  
+Claude finished the response
