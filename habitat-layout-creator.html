@@ -1,0 +1,1478 @@
+Claude
+
+
+Habitat layout creator · HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Habitat Layout Creator</title>
+<style>
+:root{
+  --bg:#0a0c12;--panel:#131722;--panel2:#1a1f2d;--line:#272e40;--text:#e7ebf4;--muted:#8a94aa;
+  --accent:#ff4d5e;--good:#3ddc84;--warn:#ffc145;--bad:#ff5c6c;--open:#1f2536;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.4}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#2a0a12 0%,#120c14 45%,var(--bg) 100%)}
+header h1{font-size:18px;margin:0;letter-spacing:.4px}
+header .tag{color:var(--muted);font-size:12px}
+.spacer{flex:1}
+button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 11px;cursor:pointer;font:inherit;font-size:13px;transition:border-color .15s,background .15s}
+button:hover{border-color:#4a5470}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover{filter:brightness(1.1)}
+button.small{padding:4px 8px;font-size:12px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.app{display:grid;grid-template-columns:270px minmax(0,1fr) 340px;gap:14px;padding:14px;align-items:start}
+@media (max-width:1150px){.app{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.card h2{font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:0 0 10px;font-weight:600}
+label.f{display:block;margin:9px 0 4px;color:var(--muted);font-size:12px}
+input[type=number],input[type=text],select,textarea{width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit}
+textarea{font-family:ui-monospace,Menlo,monospace;font-size:11px;min-height:80px}
+.row{display:flex;gap:8px}.row>*{flex:1;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:11px;padding:4px 8px;border-radius:999px}
+.tools{display:flex;flex-direction:column;gap:5px}
+.tool{display:flex;align-items:center;gap:9px;text-align:left;width:100%;padding:6px 8px}
+.tool.active{border-color:var(--text);background:#232a3c}
+.sw{width:16px;height:16px;border-radius:4px;flex:none;border:1px solid rgba(255,255,255,.15)}
+.tool .nm{flex:1}
+.tool .kb{color:var(--muted);font-size:10px;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.tool .ct{font-size:11px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.tool .ct.ok{color:var(--good)}.tool .ct.low{color:var(--warn)}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{flex:1;border:none;border-radius:0;background:var(--panel2);white-space:nowrap}
+.seg button.on{background:#2b3348;color:#fff}
+.rules{margin:0;padding:0;list-style:none;font-size:12px}
+.rules li{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.rules li span:last-child{font-variant-numeric:tabular-nums;color:#cfd6e6;text-align:right;white-space:nowrap}
+.rules .src{font-size:10px;color:#8fb3ff;text-decoration:none}
+.rules .src:hover{text-decoration:underline}
+.rules .src.est{color:#c9a76a}
+.capbox{margin-top:10px;padding:8px 10px;border-radius:8px;background:rgba(255,92,108,.12);border:1px solid rgba(255,92,108,.45);font-size:12px}
+.fixlog{margin-bottom:10px;padding:10px;border-radius:8px;background:rgba(61,220,132,.1);border:1px solid rgba(61,220,132,.4);font-size:12px}
+.fixlog b{font-size:14px}
+.fixlog ol{margin:6px 0 0;padding-left:18px;color:#c3cad9;max-height:160px;overflow:auto}
+button.fix{background:linear-gradient(90deg,#2bb673,#1f9d8a);border-color:#2bb673;color:#fff;font-weight:600}
+.edhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.edhead h2{margin:0}
+.gridwrap{position:relative;display:flex;justify-content:center;padding:14px;background:radial-gradient(ellipse at center,#141a28 0%,#0c0f17 70%);border-radius:10px;border:1px solid var(--line);overflow:auto}
+.grid{display:grid;gap:1px;touch-action:none;user-select:none;-webkit-user-select:none}
+.c{width:var(--cs);height:var(--cs);position:relative;border-radius:2px;background:var(--open);cursor:crosshair;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:rgba(0,0,0,.65)}
+.c.out{background:transparent;cursor:default}
+.c.low:not(.out)::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 3px,transparent 3px 6px);pointer-events:none}
+.c .ov{position:absolute;inset:0;border-radius:2px;pointer-events:none}
+.c .tx{position:relative;z-index:2;pointer-events:none;color:#fff;text-shadow:0 1px 2px #000;font-size:9px}
+.c.exit{background:#f2f4f8!important;color:#111}
+.c.exit .tx{color:#111;text-shadow:none}
+.c.path{outline:2px solid #fff;outline-offset:-2px;z-index:3}
+.c.hl{animation:pulse 1s ease-in-out 3;z-index:4}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}50%{box-shadow:0 0 0 3px #fff}}
+.status{margin-top:8px;font-size:12px;color:var(--muted);min-height:18px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.stat b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--muted)}
+.costhead{margin-top:14px;font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:600}
+.costhead span{text-transform:none;letter-spacing:0;font-weight:400}
+.costnote{margin-top:8px;font-size:11px;color:var(--muted)}
+.costnote a{color:#8fb3ff}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--muted);margin-top:8px;align-items:center}
+.legend .bar{width:120px;height:8px;border-radius:4px}
+.scorebox{display:flex;align-items:center;gap:14px}
+.ring{width:110px;height:110px;flex:none}
+.grade{font-size:40px;font-weight:800;line-height:1}
+.gsub{color:var(--muted);font-size:12px}
+.cats{margin-top:12px}
+.cat{display:grid;grid-template-columns:96px 1fr 44px;gap:8px;align-items:center;font-size:12px;margin:6px 0}
+.cat .tr{height:7px;background:var(--panel2);border-radius:4px;overflow:hidden}
+.cat .fi{height:100%;border-radius:4px;transition:width .3s}
+.cat .v{text-align:right;font-variant-numeric:tabular-nums;color:#cfd6e6}
+.sug{list-style:none;margin:0;padding:0;counter-reset:s}
+.sug li{counter-increment:s;padding:8px 8px 8px 34px;position:relative;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;cursor:pointer;background:var(--panel2)}
+.sug li::before{content:counter(s);position:absolute;left:9px;top:8px;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.sug li:hover{border-color:#4a5470}
+.sug .t{font-weight:600}
+.sug .d{color:var(--muted);font-size:12px;margin-top:2px}
+.sug .gain{float:right;font-size:11px;color:var(--good)}
+.checks .grp{margin-top:10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.ck{display:flex;gap:8px;padding:6px 4px;border-bottom:1px solid var(--line);cursor:pointer;font-size:12px}
+.ck:hover{background:var(--panel2)}
+.ck .ic{flex:none;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#111}
+.ic.pass{background:var(--good)}.ic.warn{background:var(--warn)}.ic.fail{background:var(--bad)}
+.ck .d{color:var(--muted)}
+.saved{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:10px}
+.sv{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px}
+.sv.sel{border-color:var(--accent)}
+.sv canvas{width:100%;height:auto;display:block;background:#0c0f17;border-radius:6px;margin-bottom:8px;image-rendering:pixelated}
+.sv .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sv .mt{font-size:11px;color:var(--muted)}
+.sv .bt{display:flex;gap:6px;margin-top:8px;align-items:center}
+.sv .sc{font-size:20px;font-weight:800}
+.cmp{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
+.cmp th,.cmp td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;font-variant-numeric:tabular-nums}
+.cmp th{color:var(--muted);font-weight:500}
+.cmp td.best{color:var(--good);font-weight:700}
+.empty{color:var(--muted);font-size:12px;padding:8px 0}
+details summary{cursor:pointer;color:var(--muted);font-size:12px}
+details p,details li{font-size:12px;color:#c3cad9}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal.on{display:flex}
+.modal .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;width:min(560px,100%)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#2b3348;border:1px solid var(--line);padding:8px 14px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:60}
+.toast.on{opacity:1}
+.tour-hi{position:relative;z-index:70!important;box-shadow:0 0 0 4px #ff4d5e,0 0 0 9999px rgba(5,7,12,.72)!important;border-radius:12px}
+.tourpop{position:fixed;z-index:80;display:none;width:min(340px,calc(100vw - 24px));background:#1b2030;border:1px solid #ff4d5e;border-radius:12px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.tourpop.on{display:block}
+.tstep{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.ttitle{font-size:16px;font-weight:700;margin:4px 0 6px}
+.tbody{font-size:13px;color:#c9d0de}
+.tbtns{display:flex;gap:6px;margin-top:12px;align-items:center}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+@media (max-width:640px){.ba{grid-template-columns:1fr}}
+.bapane{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.bapane.after{border-color:rgba(61,220,132,.55)}
+.bapane canvas{max-width:100%;height:auto;display:block;margin:6px auto;background:#0c0f17;border-radius:6px;image-rendering:pixelated}
+.bapane .lab{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+.bapane .big{font-size:30px;font-weight:800;line-height:1.1}
+.bapane .cap{font-size:11px;color:var(--bad);min-height:15px}
+.badiff{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
+.badiff th,.badiff td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;font-variant-numeric:tabular-nums}
+.badiff th{color:var(--muted);font-weight:500}
+.badiff td.up{color:var(--good);font-weight:700}.badiff td.down{color:var(--bad);font-weight:700}.badiff td.same{color:var(--muted)}
+.view3d{position:relative;border-radius:10px;border:1px solid var(--line);overflow:hidden;background:radial-gradient(ellipse at 50% 35%,#1a2236 0%,#0b0e16 75%)}
+.view3d canvas{display:block;width:100%;height:480px;cursor:grab;touch-action:none}
+.view3d canvas:active{cursor:grabbing}
+.v3bar{position:absolute;top:10px;left:10px;right:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;pointer-events:none}
+.v3bar>*{pointer-events:auto}
+.v3bar .seg button{padding:4px 9px;font-size:12px}
+.v3hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:11px;color:var(--muted);pointer-events:none}
+.pill{padding:4px 10px;border-radius:999px;font-weight:700;font-size:13px;background:var(--panel2);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🛰️ Habitat Layout Creator</h1>
+    <div class="tag">SW-4 · plan zones, check volume, noise, conflicts &amp; egress, then score it</div>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill" id="hdrScore">—</span>
+  <button id="btnExGood">Load good example</button>
+  <button id="btnExBad">Load flawed example</button>
+  <button id="btnFix" class="fix" title="Let the tool improve the layout step by step">✨ Auto-fix</button>
+  <button id="btnUndo" title="Ctrl+Z">↶ Undo</button>
+  <button id="btnClear">Clear</button>
+  <button id="btnHelp" title="Show the tutorial">? Help</button>
+</header>
+ 
+<div class="app">
+  <!-- LEFT -->
+  <aside>
+    <div class="card" id="cardMission">
+      <h2>Mission</h2>
+      <div class="row">
+        <div><label class="f" for="inCrew">Crew size</label><input type="number" id="inCrew" min="1" max="12" value="6"></div>
+        <div><label class="f" for="inDays">Mission (days)</label><input type="number" id="inDays" min="1" max="1500" value="180"></div>
+      </div>
+      <div class="chips">
+        <button class="chip" data-preset="4,14">Lunar sortie · 4×14d</button>
+        <button class="chip" data-preset="6,180">Station · 6×180d</button>
+        <button class="chip" data-preset="4,900">Mars · 4×900d</button>
+        <button class="chip" data-preset="2,7">Short test · 2×7d</button>
+      </div>
+      <label class="f" for="inShape">Habitat shape</label>
+      <select id="inShape"></select>
+      <div class="row">
+        <div><label class="f" id="lblA" for="inA">A</label><input type="number" id="inA" min="4" max="30"></div>
+        <div id="wrapB"><label class="f" id="lblB" for="inB">B</label><input type="number" id="inB" min="2" max="28"></div>
+      </div>
+      <label class="f" for="inH">Deck height (m)</label>
+      <input type="number" id="inH" min="1.8" max="5" step="0.1" value="2.5">
+      <label class="f" for="inStruct">Structure (for cost)</label>
+      <select id="inStruct"><option value="rigid">Rigid module (ISS-style)</option><option value="inflatable">Inflatable (B330-style)</option></select>
+    </div>
+ 
+    <div class="card" id="cardTools">
+      <h2>Tools <span style="text-transform:none;letter-spacing:0">(m² placed / required)</span></h2>
+      <div class="tools" id="tools"></div>
+      <label class="f">Brush size</label>
+      <div class="seg" id="brush"><button data-b="1" class="on">1×1</button><button data-b="2">2×2</button><button data-b="3">3×3</button></div>
+      <div class="status" style="margin-top:8px">Drag to paint · right-click to erase · hatches go on the outer wall</div>
+    </div>
+ 
+    <div class="card">
+      <h2>Active rules</h2>
+      <ul class="rules" id="rules"></ul>
+      <details style="margin-top:10px"><summary>How rules scale</summary>
+        <ul>
+          <li>Over 30 days, each person needs 25 m³ of living volume (NASA HRP 2014 minimum for long missions). Shorter missions use an estimate of 10 m³.</li>
+          <li>Over 30 days, everyone gets private quarters of 5.4 m³ (NASA HRP 2014).</li>
+          <li>Exercise (17.25 m³ for 2 machines), hygiene (4.34 m³ per compartment, 2 compartments for &gt;4 crew), eating (11.26 m³ per 4 crew) and logistics storage come from NASA's 380-day deep-space habitat study (Rucker 2012). Volumes are turned into floor area using the deck height.</li>
+          <li>Work and medical areas are estimates. NASA sizes work for up to 4 people at once and lets medical share the exercise area.</li>
+          <li>NASA-STD-3001 (V2 8014) requires escape routes free of stowed items. NASA sets no exit count or distance, so "2 exits for &gt;4 crew or &gt;90 days" and the 15 m / 12 m limits are design rules.</li>
+          <li>Hygiene must be kept apart from food prep (NASA-STD-3001 V2 8001) and away from crew quarters (NASA HRP 2014).</li>
+          <li>Serious safety problems cap the total score: no exit 30, no sleep quarters 40, trapped crew 45, hearing hazard or under half the volume 50, under half the sleep space 60, missing second exit 65.</li>
+          <li>Sleep noise limit tightens from NC-50 (≈58 dBA) to NC-40 (≈49 dBA) for missions over 30 days.</li>
+        </ul>
+        <p><b>Noise limits are from NASA-STD-3001 Vol. 2:</b> sleep NC-40 for &gt;30-day missions (V2 6079), work areas NC-50 (V2 6078), hazard &lt;85 dBA anywhere (V2 6077). NC→dBA conversions (NC-40 ≈ 49, NC-50 ≈ 58 dBA) are from NASA's Shuttle acoustics paper. Medical uses the NC-50 work-area limit. The loudness of each zone (exercise 65 dBA etc.) is an estimate.</p>
+        <p>Each rule above shows its source: blue links are NASA documents, gold tags are estimates or design rules. Tune them in <code>getRules()</code> and <code>NASA_VOL</code>.</p>
+        <p><a href="https://www.nasa.gov/sites/default/files/atoms/files/acoustics_technical_brief_ochmo_0.pdf" target="_blank" rel="noopener" style="color:#8fb3ff">NASA acoustics technical brief (OCHMO-TB-035)</a> · <a href="https://ntrs.nasa.gov/api/citations/20090043801/downloads/20090043801.pdf" target="_blank" rel="noopener" style="color:#8fb3ff">NC → dBA values (NTRS 20090043801)</a></p>
+      </details>
+    </div>
+  </aside>
+ 
+  <!-- CENTER -->
+  <main>
+    <div class="card">
+      <div class="edhead">
+        <h2>Layout editor</h2>
+        <div class="spacer"></div>
+        <div class="seg" id="overlay" style="min-width:250px">
+          <button data-o="none" class="on">Zones</button>
+          <button data-o="noise">Noise map</button>
+          <button data-o="egress">Exit paths</button>
+          <button data-o="3d">🧊 3D view</button>
+        </div>
+      </div>
+      <div class="gridwrap" id="gridwrap"><div class="grid" id="grid"></div></div>
+      <div class="view3d" id="view3d" style="display:none">
+        <canvas id="c3d"></canvas>
+        <div class="v3bar">
+          <div class="seg" id="v3mode"><button data-m="zones" class="on">Zones</button><button data-m="noise">Noise</button><button data-m="egress">Exits</button></div>
+          <button class="small" id="v3spin">⏸ Stop rotating</button>
+          <button class="small" id="v3reset">⟲ Reset view</button>
+          <button class="small" id="v3labels">Labels: on</button>
+        </div>
+        <div class="v3hint">Drag to rotate · scroll or pinch to zoom · switch back to <b>Zones</b> above to paint</div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="status" id="status">Hover a cell for details.</div>
+      <div class="stats" id="stats"></div>
+      <div id="cost"></div>
+    </div>
+ 
+    <div class="card" id="baCard" style="display:none"></div>
+ 
+    <div class="card" id="cardSave">
+      <div class="edhead">
+        <h2>Save &amp; compare</h2>
+        <div class="spacer"></div>
+        <input type="text" id="saveName" placeholder="Layout name" style="max-width:200px">
+        <button class="primary" id="btnSave">Save layout</button>
+        <button id="btnExport">Export JSON</button>
+        <button id="btnImport">Import JSON</button>
+      </div>
+      <div class="saved" id="saved"></div>
+      <div id="compare"></div>
+    </div>
+  </main>
+ 
+  <!-- RIGHT -->
+  <aside>
+    <div class="card" id="cardScore">
+      <h2>Layout score</h2>
+      <div class="scorebox">
+        <svg class="ring" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="#232a3c" stroke-width="12"/>
+          <circle id="ringFg" cx="60" cy="60" r="50" fill="none" stroke="#3ddc84" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 400" transform="rotate(-90 60 60)"/>
+          <text id="ringTx" x="60" y="68" text-anchor="middle" fill="#e7ebf4" font-size="28" font-weight="800">0</text>
+        </svg>
+        <div><div class="grade" id="grade">–</div><div class="gsub" id="gsub"></div></div>
+      </div>
+      <div id="capbox"></div>
+      <div class="cats" id="cats"></div>
+    </div>
+    <div class="card">
+      <h2>Top improvements</h2>
+      <div id="fixlog"></div>
+      <ol class="sug" id="sug"></ol>
+    </div>
+    <div class="card checks">
+      <h2>All checks</h2>
+      <div id="checks"></div>
+    </div>
+  </aside>
+</div>
+ 
+<div class="modal" id="modal"><div class="box">
+  <h2 id="mTitle" style="font-size:14px;margin:0 0 8px">Export</h2>
+  <p id="mHelp" style="font-size:12px;color:var(--muted);margin:0 0 8px"></p>
+  <textarea id="mText" rows="10"></textarea>
+  <div class="row" style="margin-top:10px;justify-content:flex-end;flex:none">
+    <input type="file" id="mFile" accept=".json,application/json" style="flex:1">
+    <button id="mCopy" style="flex:none">Copy</button>
+    <button id="mOk" class="primary" style="flex:none">Import</button>
+    <button id="mClose" style="flex:none">Close</button>
+  </div>
+</div></div>
+<div class="toast" id="toast"></div>
+<div class="tourpop" id="tourpop" role="dialog" aria-live="polite">
+  <div class="tstep" id="tStep"></div>
+  <div class="ttitle" id="tTitle"></div>
+  <div class="tbody" id="tBody"></div>
+  <div class="tbtns"><button class="small" id="tSkip">Skip</button><span class="spacer"></span><button class="small" id="tBack">Back</button><button class="small primary" id="tNext">Next</button></div>
+</div>
+ 
+<script>
+/* ===================== CONFIG ===================== */
+const ZONES = {
+  sleep:    {name:'Sleep',        color:'#5b7cfa', key:'1'},
+  exercise: {name:'Exercise',     color:'#ff5d73', key:'2', noise:65},
+  hygiene:  {name:'Hygiene',      color:'#2ec4c4', key:'3', noise:50},
+  food:     {name:'Food / galley',color:'#ffa53d', key:'4', noise:55},
+  work:     {name:'Work',         color:'#a77bff', key:'5', noise:50},
+  medical:  {name:'Medical',      color:'#43d17a', key:'6'},
+  storage:  {name:'Storage',      color:'#7b8394', key:'7'},
+};
+const ZK = Object.keys(ZONES);
+const BG_NOISE = 35;            // dBA, life-support fans (estimate)
+// Limits from NASA-STD-3001 Vol 2 Rev D (see OCHMO-TB-035 Acoustics technical brief)
+const NASA_NOISE = {
+  NC40: 49,     // V2 6079 crew sleep continuous noise, missions > 30 days (NC-40 ≈ 49 dBA)
+  NC50: 58,     // V2 6078 continuous noise in work areas (NC-50 ≈ 58 dBA)
+  HAZARD: 85,   // V2 6077 hazard limit: below 85 dBA anywhere, any duration
+};
+const STORAGE_ACOUSTIC = 2.5;   // storage racks count as 2.5 m of distance for sound
+const MIN_CEILING = 1.9;
+const WEIGHTS = {volume:20, zones:20, adjacency:15, noise:15, egress:20, efficiency:10};
+const CAT_NAMES = {volume:'Volume / crew', zones:'Zone sizes', adjacency:'Neighbours', noise:'Noise', egress:'Emergency exits', efficiency:'Space use'};
+const CONFLICTS = [
+  {a:'sleep',  b:'exercise', sev:'high', why:'exercise noise and vibration disturb sleep'},
+  {a:'hygiene',b:'food',     sev:'high', why:'NASA-STD-3001 requires food prep and the lavatory to be separated to avoid contamination'},
+  {a:'sleep',  b:'food',     sev:'med',  why:'galley noise, light and odours reach the crew quarters'},
+  {a:'medical',b:'exercise', sev:'med',  why:'medical care needs a calm, clean, vibration-free area'},
+  {a:'medical',b:'food',     sev:'med',  why:'keep patient care separate from food prep'},
+  {a:'sleep',  b:'hygiene',  sev:'med',  why:'NASA places hygiene away from crew quarters and galley'},
+];
+const SYNERGIES = [
+  {a:'exercise',b:'hygiene', why:'crew can wash right after a workout'},
+  {a:'medical', b:'hygiene', why:'water and sanitation close to the medical bay'},
+  {a:'food',    b:'storage', why:'short trips to fetch food supplies'},
+  {a:'work',    b:'storage', why:'tools and spares close to the workstations'},
+];
+const SHAPES = {
+  rect:    {name:'Rectangular module',      a:['Length (m)',12], b:['Width (m)',8]},
+  cylinder:{name:'Cylinder (circular deck)',a:['Diameter (m)',11]},
+  dome:    {name:'Inflatable dome',         a:['Diameter (m)',13]},
+  ring:    {name:'Torus / ring',            a:['Outer diameter (m)',18], b:['Inner diameter (m)',8]},
+  lshape:  {name:'L-shape (2 modules)',     a:['Arm length (m)',12], b:['Arm width (m)',5]},
+};
+ 
+// ---------- Sources used by the rules (shown in the UI) ----------
+const SRC = {
+  hrp:   {short:'NASA HRP 2014', url:'https://ntrs.nasa.gov/api/citations/20140016951/downloads/20140016951.pdf'},
+  rucker:{short:'NASA Rucker 2012', url:'https://ntrs.nasa.gov/api/citations/20140012748/downloads/20140012748.pdf'},
+  std:   {short:'NASA-STD-3001', url:'https://www.nasa.gov/reference/8-0-architecture-vol-2'},
+  acou:  {short:'NASA-STD-3001 acoustics', url:'https://www.nasa.gov/sites/default/files/atoms/files/acoustics_technical_brief_ochmo_0.pdf'},
+  est:   {short:'estimate'},
+  design:{short:'design rule'},
+};
+// Volumes from NASA studies (m³). Converted to floor area by dividing by deck height.
+const NASA_VOL = {
+  NHV_PER_CREW: 25,                 // HRP 2014: minimum acceptable net habitable volume per person, long-duration missions
+  QUARTERS_PER_CREW: 5.4,           // HRP 2014: private crew quarters per crewmember
+  EXERCISE: 17.25,                  // Rucker 2012: dedicated exercise volume (2 devices: ARED + T2)
+  HYGIENE_COMPARTMENT: 4.34,        // Rucker 2012: full-body cleansing volume (one compartment)
+  EATING_PER_4_CREW: 11.26,         // Rucker 2012: eating / group volume for 4 crew
+  LOGISTICS_PER_CREW_DAY: 20.02/(4*380), // Rucker 2012: 20.02 m³ logistics for 4 crew × 380 days
+};
+ 
+// ---------- Cost model (rough, for comparing layouts) ----------
+// Structure mass per m³ of pressurized volume, from real modules:
+//   ISS Destiny (rigid): 14,515 kg / 104.77 m³ ≈ 139 kg/m³;  Bigelow B330 (inflatable): 23,000 kg / 330 m³ ≈ 70 kg/m³
+// Launch: Falcon Heavy ≈ $1,520 per kg to low Earth orbit (≈ $97M for 63.8 t). Deep space costs more.
+const COST = {
+  structures: {
+    rigid:      {name:'Rigid module (ISS Destiny-style)', kgPerM3: 14515/104.77, url:'https://en.wikipedia.org/wiki/Destiny_(ISS_module)'},
+    inflatable: {name:'Inflatable (Bigelow B330-style)',  kgPerM3: 23000/330,    url:'https://en.wikipedia.org/wiki/B330'},
+  },
+  launchPerKg: 1520,
+  launchUrl: 'https://orbitalradar.com/launch-vehicles/falcon-heavy',
+};
+const money = usd => usd >= 1e9 ? '$'+fmt(usd/1e9,2)+' B' : '$'+fmt(usd/1e6,1)+' M';
+const tonnes = kg => fmt(kg/1000,1)+' t';
+function costOf(volM3, structure){ const kg = volM3 * COST.structures[structure||'rigid'].kgPerM3; return {kg, usd: kg*COST.launchPerKg}; }
+ 
+function getRules(crew, days, height){
+  const h = height || 2.5, med = days > 30, area = v => Math.ceil(v / h - 1e-9);
+  return {
+    volPerCrew: med ? NASA_VOL.NHV_PER_CREW : 10,
+    volSrc: med ? SRC.hrp : SRC.est,
+    zones: {
+      sleep:    med ? area(crew * NASA_VOL.QUARTERS_PER_CREW) : Math.ceil(crew * 1.5),
+      exercise: med ? area(NASA_VOL.EXERCISE) : days > 14 ? area(NASA_VOL.EXERCISE/2) : 0,
+      hygiene:  area((med && crew > 4 ? 2 : 1) * NASA_VOL.HYGIENE_COMPARTMENT),
+      food:     area(Math.max(1, crew/4) * NASA_VOL.EATING_PER_4_CREW),
+      work:     Math.ceil(Math.max(2, Math.min(crew, 4) * 2)),
+      medical:  (med || crew >= 4) ? Math.ceil(Math.max(2, crew * 0.5)) : 0,
+      storage:  Math.max(2, area(crew * days * NASA_VOL.LOGISTICS_PER_CREW_DAY)),
+    },
+    zoneSrc: {
+      sleep:    med ? SRC.hrp : SRC.est,
+      exercise: med ? SRC.rucker : SRC.est,
+      hygiene:  SRC.rucker,
+      food:     SRC.rucker,
+      work:     SRC.est,
+      medical:  SRC.est,
+      storage:  SRC.rucker,
+    },
+    zoneWhy: {
+      sleep:    med ? `${NASA_VOL.QUARTERS_PER_CREW} m³ private quarters per person` : '1.5 m² per person, shared on short missions',
+      exercise: med ? `${NASA_VOL.EXERCISE} m³ for 2 exercise devices` : days > 14 ? 'one exercise device (half the NASA long-mission volume)' : 'not needed for very short missions',
+      hygiene:  `${(med && crew>4)?2:1} hygiene compartment${(med&&crew>4)?'s':''} × ${NASA_VOL.HYGIENE_COMPARTMENT} m³`,
+      food:     `${NASA_VOL.EATING_PER_4_CREW} m³ per 4 crew so everyone can eat together`,
+      work:     'workstations for up to 4 people at once (NASA HRP sizing), 2 m² each',
+      medical:  'NASA studies let medical share the exercise area; we keep a small dedicated bay',
+      storage:  'logistics scale with crew × days (4 crew × 380 days ≈ 20 m³)',
+    },
+    hygCompartments: (med && crew > 4) ? 2 : 1,
+    quarterArea: med ? Math.max(1, Math.floor(NASA_VOL.QUARTERS_PER_CREW / h)) : 1,  // smallest useful private quarter
+    exitsRequired: (crew > 4 || days > 90) ? 2 : 1,
+    maxEgress: crew > 6 ? 12 : 15,
+    // NASA-STD-3001 Vol 2: V2 6079 sleep areas NC-40 for missions > 30 days, V2 6078 work areas NC-50.
+    // NC curves converted to overall dBA: NC-40 ≈ 49 dBA, NC-50 ≈ 58 dBA (NASA NTRS 20090043801).
+    noiseLimit: {sleep: med ? NASA_NOISE.NC40 : NASA_NOISE.NC50, medical: NASA_NOISE.NC50, work: NASA_NOISE.NC50},
+    noiseLabel: {sleep: med ? 'NC-40' : 'NC-50', medical: 'NC-50', work: 'NC-50'},
+    noiseHazard: NASA_NOISE.HAZARD,
+  };
+}
+ 
+/* ===================== STATE ===================== */
+let S = {crew:6, days:180, shape:'rect', a:12, b:8, height:2.5, structure:'rigid', cells:[]};
+let G = null;           // geometry: {W,H,mask,heights}
+let A = null;           // last analysis
+let tool = 'sleep', brush = 1, overlay = 'none';
+let history = [];
+let painting = false, lastPainted = -1, eraseDrag = false;
+let compareSel = new Set();
+let memStore = [];
+const STORE_KEY = 'habitat-layouts-v1';
+ 
+const $ = s => document.querySelector(s);
+const fmt = (v,d=1) => (Math.round(v*10**d)/10**d).toLocaleString();
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const pct = v => Math.round(v*100) + '%';
+ 
+/* ===================== GEOMETRY ===================== */
+function geometry(st){
+  const {shape} = st; const a = st.a, b = st.b, h0 = st.height;
+  const W = shape === 'rect' ? a : a, H = shape === 'rect' ? b : a;
+  const mask = [], heights = [];
+  const R = a/2, r2 = b/2;
+  for (let y=0; y<H; y++) for (let x=0; x<W; x++){
+    const dx = x + .5 - W/2, dy = y + .5 - H/2, r = Math.hypot(dx, dy);
+    let inside = true, h = h0;
+    if (shape === 'cylinder') inside = r <= R;
+    else if (shape === 'dome'){ inside = r <= R; h = Math.min(h0, Math.sqrt(Math.max(0, R*R - r*r))); }
+    else if (shape === 'ring') inside = r <= R && r >= r2;
+    else if (shape === 'lshape') inside = x < b || y >= H - b;
+    mask.push(inside); heights.push(inside ? h : 0);
+  }
+  return {W, H, mask, heights};
+}
+function isBoundary(i, g=G){
+  if (!g.mask[i]) return false;
+  const x = i % g.W, y = (i / g.W) | 0;
+  for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+    const nx = x+dx, ny = y+dy;
+    if (nx<0 || ny<0 || nx>=g.W || ny>=g.H || !g.mask[ny*g.W+nx]) return true;
+  }
+  return false;
+}
+function applyGeometry(old){
+  G = geometry(S);
+  const cells = new Array(G.W*G.H).fill(null);
+  if (old){
+    for (let y=0; y<Math.min(old.H, G.H); y++) for (let x=0; x<Math.min(old.W, G.W); x++){
+      const v = old.cells[y*old.W + x], i = y*G.W + x;
+      if (v && G.mask[i]) cells[i] = v;
+    }
+  }
+  S.cells = cells;
+  for (let i=0; i<cells.length; i++) if (cells[i] === 'exit' && !isBoundary(i)) cells[i] = null;
+}
+ 
+/* ===================== ANALYSIS ===================== */
+function dijkstra(src, stepCost){
+  const {W,H,mask} = G, n = W*H, d = new Float64Array(n).fill(Infinity), heap = [];
+  const push = (c,i) => { heap.push([c,i]); let k = heap.length-1;
+    while (k>0){ const p=(k-1)>>1; if (heap[p][0] <= heap[k][0]) break; [heap[p],heap[k]]=[heap[k],heap[p]]; k=p; } };
+  const pop = () => { const top = heap[0], last = heap.pop();
+    if (heap.length){ heap[0]=last; let k=0;
+      for(;;){ const l=2*k+1, r=l+1; let m=k;
+        if (l<heap.length && heap[l][0]<heap[m][0]) m=l;
+        if (r<heap.length && heap[r][0]<heap[m][0]) m=r;
+        if (m===k) break; [heap[m],heap[k]]=[heap[k],heap[m]]; k=m; } }
+    return top; };
+  src.forEach(i => { d[i]=0; push(0,i); });
+  while (heap.length){
+    const [c,i] = pop(); if (c > d[i]) continue;
+    const x = i%W, y = (i/W)|0;
+    for (let dy=-1; dy<=1; dy++) for (let dx=-1; dx<=1; dx++){
+      if (!dx && !dy) continue;
+      const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue;
+      const j = ny*W+nx; if (!mask[j]) continue;
+      if (dx && dy && (!mask[y*W+nx] || !mask[ny*W+x])) continue;
+      const nc = c + (dx&&dy ? 1.414 : 1) * stepCost(j);
+      if (nc < d[j]){ d[j]=nc; push(nc,j); }
+    }
+  }
+  return d;
+}
+ 
+function analyze(){
+  const {W,H,mask,heights} = G, cells = S.cells, n = W*H;
+  const R = getRules(S.crew, S.days, S.height);
+  const checks = [];
+  const add = (cat,status,title,detail,fix,hl,impact) =>
+    checks.push({cat,status,title,detail,fix:fix||null,cells:hl||[],impact:impact||0});
+  const idxOf = k => { const r=[]; for (let i=0;i<n;i++) if (mask[i] && cells[i]===k) r.push(i); return r; };
+ 
+  // ---- counts & volume
+  const count = {}; ZK.forEach(k => count[k]=0);
+  let interior=0, open=0, nhv=0, totalVol=0; const exits=[], openCells=[];
+  for (let i=0;i<n;i++){
+    if (!mask[i]) continue; interior++; totalVol += heights[i];
+    const v = cells[i];
+    if (v==='exit') exits.push(i); else if (v) count[v]++; else { open++; openCells.push(i); }
+    if (v !== 'storage') nhv += heights[i];
+  }
+  const target = R.volPerCrew * S.crew, ratio = nhv / target;
+  const volScore = Math.min(1, ratio);
+  const volSrcTxt = R.volSrc===SRC.hrp ? 'NASA HRP minimum for long-duration missions' : 'estimate for short missions';
+  if (ratio >= 1) add('volume','pass',`${fmt(nhv/S.crew)} m³ habitable volume per person`,`Needs at least ${R.volPerCrew} m³ per person (${volSrcTxt}).`);
+  else add('volume', ratio>=.75?'warn':'fail', `Only ${fmt(nhv/S.crew)} m³ per person`,
+    `A ${S.days}-day mission needs at least ${R.volPerCrew} m³ per person (${volSrcTxt}), so ${fmt(target,0)} m³ in total. You have ${fmt(nhv,0)} m³. Storage does not count as living volume.`,
+    `Enlarge the habitat by about ${Math.ceil((target-nhv)/S.height)} m² of floor, reduce the crew, or move storage out of the living area.`, [], WEIGHTS.volume*(1-volScore));
+ 
+  // ---- zone sizes
+  const reqKeys = ZK.filter(k => R.zones[k] > 0);
+  let zsum = 0;
+  for (const k of ZK){
+    const req = R.zones[k], have = count[k], zc = idxOf(k), nm = ZONES[k].name;
+    if (!req){ if (have) add('zones','pass',`${nm}: ${have} m²`,'Optional for this mission.',null,zc); continue; }
+    const s = Math.min(1, have/req); zsum += s;
+    const zsrc = `${R.zoneWhy[k]} (${R.zoneSrc[k].short})`;
+    if (have >= req) add('zones','pass',`${nm}: ${have} / ${req} m²`,`Meets the minimum: ${zsrc}.`,null,zc);
+    else add('zones', have===0?'fail':'warn', have===0?`${nm} zone missing`:`${nm} too small: ${have} / ${req} m²`,
+      `${S.crew} crew on a ${S.days}-day mission need at least ${req} m² of ${nm.toLowerCase()}: ${zsrc}.`,
+      `Paint ${req-have} more m² of ${nm.toLowerCase()}.`, zc, WEIGHTS.zones*(1-s)/reqKeys.length);
+  }
+  let zoneScore = reqKeys.length ? zsum/reqKeys.length : 1;
+  // fragmentation: zones should be compact, connected areas (equipment and people not scattered)
+  let extraPieces = 0;
+  for (const k of ['sleep','exercise','hygiene','food','work','medical']){
+    const seen = new Set(), comps = [];
+    for (let i=0;i<n;i++){ if (!mask[i] || cells[i]!==k || seen.has(i)) continue;
+      const comp=[i]; seen.add(i);
+      for (let h=0; h<comp.length; h++){ const c=comp[h], x=c%W, y=(c/W)|0;
+        for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue;
+          const j=ny*W+nx; if (mask[j] && cells[j]===k && !seen.has(j)){ seen.add(j); comp.push(j); } } }
+      comps.push(comp); }
+    if (comps.length < 2) continue;
+    comps.sort((a,b)=>b.length-a.length);
+    const allowed = k==='sleep' ? S.crew : k==='hygiene' ? R.hygCompartments : 1;
+    let extra = Math.max(0, comps.length - allowed), scraps = [];
+    if (k==='sleep'){ scraps = comps.filter(c => c.length < R.quarterArea); extra = Math.max(extra, scraps.length); }
+    if (!extra) continue;
+    extraPieces += extra;
+    const small = (k==='sleep' && scraps.length ? scraps : comps.slice(allowed)).flat();
+    const nm = ZONES[k].name;
+    add('zones','warn',`${nm} is split into ${comps.length} pieces`,
+      k==='sleep' ? `Each sleep area should be at least ${R.quarterArea} m², one private quarter, not scattered single beds.` : `${nm} works best as one connected area${k==='hygiene'&&allowed>1?` (up to ${allowed} compartments)`:''}, so equipment and people aren't scattered.`,
+      `Join the small pieces of ${nm.toLowerCase()} onto its main area.`, small, Math.min(6, WEIGHTS.zones*.06*extra));
+  }
+  zoneScore *= Math.max(.5, 1 - .06*extraPieces);
+  const low = [];
+  for (let i=0;i<n;i++) if (mask[i] && cells[i] && cells[i]!=='storage' && cells[i]!=='exit' && heights[i] < MIN_CEILING) low.push(i);
+  if (low.length) add('zones','warn',`${low.length} m² of crew zones under a low ceiling`,
+    `Near the curved wall the ceiling is below ${MIN_CEILING} m. Crew can't stand there.`,
+    'Move those zones toward the centre and use the low edge for storage.', low, 2);
+ 
+  // ---- adjacency
+  const pairs = {};
+  for (let y=0;y<H;y++) for (let x=0;x<W;x++){
+    const i=y*W+x, v=cells[i]; if (!mask[i] || !v || v==='exit') continue;
+    for (const [dx,dy] of [[1,0],[0,1]]){
+      const nx=x+dx, ny=y+dy; if (nx>=W || ny>=H) continue;
+      const j=ny*W+nx, w=cells[j]; if (!mask[j] || !w || w==='exit' || w===v) continue;
+      const key=[v,w].sort().join('|'); const p = pairs[key] || (pairs[key]={edges:0,cells:new Set()});
+      p.edges++; p.cells.add(i); p.cells.add(j);
+    }
+  }
+  let pen = 0;
+  for (const c of CONFLICTS){
+    const p = pairs[[c.a,c.b].sort().join('|')]; if (!p) continue;
+    const w = c.sev==='high' ? .35 : .15; pen += w;
+    add('adjacency', c.sev==='high'?'fail':'warn', `${ZONES[c.a].name} touches ${ZONES[c.b].name}`,
+      `${c.why[0].toUpperCase()+c.why.slice(1)} (${p.edges} m of shared wall).`,
+      `Separate ${ZONES[c.a].name.toLowerCase()} and ${ZONES[c.b].name.toLowerCase()} with a corridor, storage or a neutral zone.`, [...p.cells], WEIGHTS.adjacency*w);
+  }
+  if (!pen) add('adjacency','pass','No conflicting neighbours','No noisy or dirty zone shares a wall with a quiet or clean one.');
+  for (const s of SYNERGIES){
+    const p = pairs[[s.a,s.b].sort().join('|')];
+    if (p) add('adjacency','pass',`Good pairing: ${ZONES[s.a].name} + ${ZONES[s.b].name}`, s.why[0].toUpperCase()+s.why.slice(1)+'.', null, [...p.cells]);
+  }
+  const adjScore = Math.max(0, 1-pen);
+ 
+  // ---- noise
+  const srcDist = {};
+  for (const k of ZK) if (ZONES[k].noise){ const src = idxOf(k); if (src.length) srcDist[k] = dijkstra(src, j => cells[j]==='storage' ? STORAGE_ACOUSTIC : 1); }
+  const noiseMap = new Float32Array(n), dom = new Array(n).fill(null);
+  for (let i=0;i<n;i++){
+    if (!mask[i]) continue;
+    let e = 10**(BG_NOISE/10), bl = -1;
+    for (const k in srcDist){
+      const d = srcDist[k][i]; if (!isFinite(d)) continue;
+      const L = ZONES[k].noise - 20*Math.log10(1+d);
+      e += 10**(L/10); if (L > bl){ bl = L; dom[i] = k; }
+    }
+    noiseMap[i] = 10*Math.log10(e);
+  }
+  const quiet = [];
+  for (const k in R.noiseLimit){ const zc = idxOf(k); if (zc.length) quiet.push({k, zc, lim:R.noiseLimit[k]}); }
+  const qTotal = quiet.reduce((s,q)=>s+q.zc.length, 0);
+  let qs = 0;
+  for (const {k,zc,lim} of quiet){
+    let sub = 0, worst = zc[0];
+    const bad = zc.filter(i => noiseMap[i] > lim);
+    zc.forEach(i => { sub += Math.max(0, 1 - Math.max(0, noiseMap[i]-lim)/12); if (noiseMap[i] > noiseMap[worst]) worst = i; });
+    qs += sub;
+    const nm = ZONES[k].name, maxL = noiseMap[worst];
+    const std = `${R.noiseLabel[k]} ≈ ${lim} dBA, NASA-STD-3001`;
+    if (!bad.length) add('noise','pass',`${nm} is quiet enough`,`Loudest point ${fmt(maxL,0)} dBA (limit ${std}).`,null,zc);
+    else {
+      const src = dom[worst] ? ZONES[dom[worst]].name.toLowerCase() : 'nearby zones';
+      add('noise', maxL-lim > 6 ? 'fail' : 'warn', `${nm} too noisy: ${fmt(maxL,0)} dBA`,
+        `${bad.length} m² is above the limit (${std}). The loudest source is ${src}.`,
+        `Move ${src} further from ${nm.toLowerCase()} or put storage between them, because racks absorb sound.`,
+        bad, WEIGHTS.noise*(zc.length - sub)/Math.max(1,qTotal));
+    }
+  }
+  let noiseScore = qTotal ? qs/qTotal : 0;
+  const hazard = []; for (let i=0;i<n;i++) if (mask[i] && noiseMap[i] >= R.noiseHazard) hazard.push(i);
+  if (hazard.length){ noiseScore *= .5;
+    add('noise','fail',`Hearing hazard: ${hazard.length} m² at ${R.noiseHazard} dBA or more`,`NASA-STD-3001 (V2 6077) requires every area to stay below ${R.noiseHazard} dBA at all times.`,'Spread the loud equipment out or surround it with storage.',hazard,WEIGHTS.noise*.5);
+  } else add('noise','pass',`No hearing hazard (everywhere below ${R.noiseHazard} dBA)`,'NASA-STD-3001 V2 6077 hazard limit is met.');
+  if (!qTotal) add('noise','fail','Noise cannot be assessed','No sleep, medical or work zone has been placed yet.','Place the sleep quarters first.',[],WEIGHTS.noise);
+ 
+  // ---- egress
+  const walk = i => mask[i] && cells[i] !== 'storage';
+  const dist = new Int32Array(n).fill(-1), parent = new Int32Array(n).fill(-1);
+  const q = [...exits]; exits.forEach(i => dist[i]=0);
+  for (let h=0; h<q.length; h++){
+    const i=q[h], x=i%W, y=(i/W)|0;
+    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue;
+      const j=ny*W+nx; if (!walk(j) || dist[j]>=0) continue;
+      dist[j]=dist[i]+1; parent[j]=i; q.push(j);
+    }
+  }
+  const walkable = []; for (let i=0;i<n;i++) if (walk(i) && cells[i]!=='exit') walkable.push(i);
+  const unreachable = walkable.filter(i => dist[i] < 0);
+  const tooFar = walkable.filter(i => dist[i] > R.maxEgress);
+  let worstCell = -1; walkable.forEach(i => { if (dist[i]>=0 && (worstCell<0 || dist[i]>dist[worstCell])) worstCell=i; });
+  const worstPath = []; if (worstCell>=0){ let c=worstCell; while (c>=0){ worstPath.push(c); c=parent[c]; } }
+  let egScore = 0; let blockedRackSet = new Set();
+  if (!exits.length){
+    add('egress','fail','No emergency exit','Every habitat needs at least one hatch to an airlock or safe haven.','Pick the Hatch tool and click a cell on the outer wall.',[],WEIGHTS.egress);
+  } else {
+    const W1 = walkable.length || 1;
+    const reach = 1 - unreachable.length/W1, within = 1 - (tooFar.length+unreachable.length)/W1;
+    egScore = .5*reach + .5*within;
+    if (exits.length < R.exitsRequired){ egScore *= .6;
+      add('egress','fail',`${exits.length} of ${R.exitsRequired} required exits`,'Design rule (NASA sets no exit count): with more than 4 crew or more than 90 days, a second exit means one fire or leak cannot trap everyone.','Add a second hatch on the opposite side of the habitat.',exits,WEIGHTS.egress*.4);
+    } else add('egress','pass',`${exits.length} exit${exits.length>1?'s':''} (needs ${R.exitsRequired})`,'Enough hatches for this crew and mission.',null,exits);
+    if (unreachable.length) add('egress','fail',`Trapped area: ${unreachable.length} m² has no way to reach any exit`,'Storage racks or walls block every path from these cells to a hatch, so crew there could not escape. NASA-STD-3001 (V2 8014) requires escape routes free of stowed items.','Open a 1 m gap in the storage, or add a hatch next to the cut-off area.',unreachable,WEIGHTS.egress*.5*unreachable.length/W1+3);
+    if (worstCell>=0){
+      const md = dist[worstCell];
+      if (md > R.maxEgress) add('egress', md>R.maxEgress*1.4?'fail':'warn', `Longest escape route ${md} m (limit ${R.maxEgress} m)`,`${tooFar.length} m² is too far from a hatch.`,'Add a hatch closer to the far end, or straighten the corridor.',tooFar,WEIGHTS.egress*.5*tooFar.length/W1+2);
+      else add('egress','pass',`Every point is within ${md} m of an exit`,`Design limit for ${S.crew} crew is ${R.maxEgress} m (NASA sets no distance). The outlined route is the longest.`,null,worstPath);
+    }
+    // storage access: every rack needs at least one open side that crew can reach from an exit
+    const storageCells = idxOf('storage');
+    if (storageCells.length){
+      const blockedRacks = storageCells.filter(i => {
+        const x=i%W, y=(i/W)|0;
+        for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+          const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue;
+          const j=ny*W+nx; if (walk(j) && dist[j]>=0) return false;
+        }
+        return true;
+      });
+      blockedRackSet = new Set(blockedRacks);
+      if (blockedRacks.length){
+        const frac = blockedRacks.length/storageCells.length;
+        egScore *= (1 - .5*frac);
+        add('egress', frac>.25?'fail':'warn', `${blockedRacks.length} m² of storage can't be reached`,
+          'These racks are surrounded by other racks or walls, or every open side faces a trapped area. Crew could never get the food, tools or spares stored there.',
+          'Add a walkway beside those racks so each one has at least one open side the crew can stand at.', blockedRacks, WEIGHTS.egress*.5*frac+2);
+      } else add('egress','pass','All storage is reachable','Every rack has an open side the crew can walk up to.',null,storageCells);
+    }
+    if (exits.length >= 2){
+      let far = 0;
+      for (const p of exits) for (const r of exits) far = Math.max(far, Math.hypot(p%W - r%W, ((p/W)|0) - ((r/W)|0)));
+      const need = .4*Math.max(W,H);
+      if (far < need){ egScore *= .85;
+        add('egress','warn','Exits are too close together',`They are only ${fmt(far,0)} m apart. One fire or leak could block both.`,'Move one hatch to the opposite side of the habitat.',exits,WEIGHTS.egress*.15);
+      } else add('egress','pass','Exits are well separated',`${fmt(far,0)} m apart, so one hazard can't block both.`,null,exits);
+    }
+  }
+ 
+  // ---- efficiency / cost
+  const circ = interior ? open/interior : 0;
+  let eff = circ < .15 ? circ/.15 : circ > .40 ? Math.max(0, 1-(circ-.40)/.4) : 1;
+  if (circ < .15) add('efficiency','warn',`Only ${pct(circ)} free floor`,'Too little circulation space. The crew will have to squeeze past equipment.','Leave 15–40% of the floor open as corridors and circulation.',[],WEIGHTS.efficiency*(1-eff));
+  else if (circ > .40){
+    const spare = (open - .30*interior) * S.height, c = costOf(spare, S.structure);
+    add('efficiency','warn',`${pct(circ)} of the floor is unassigned`,`About ${fmt(spare,0)} m³ more empty space than a comfortable 30% circulation. That's roughly ${tonnes(c.kg)} of structure and ${money(c.usd)} of launch cost.`,'Assign that space to zones, or choose a smaller habitat.',openCells,WEIGHTS.efficiency*(1-eff));
+  }
+  else add('efficiency','pass',`${pct(circ)} circulation space`,'A healthy balance between zones and corridors (15–40%).');
+  if (ratio > 2.5){
+    const f = Math.max(.5, 1-(ratio-2.5)*.3); eff *= f;
+    const extra = nhv - target*1.5, c = costOf(extra, S.structure);
+    add('efficiency','warn','Habitat is oversized',`It has ${pct(ratio)} of the living volume this crew needs. Trimming to 1.5× the need would save about ${fmt(extra,0)} m³, roughly ${tonnes(c.kg)} and ${money(c.usd)} of launch cost.`,'Try a smaller shape, or plan for a bigger crew.',[],WEIGHTS.efficiency*(1-f));
+  }
+ 
+  const cats = {volume:volScore, zones:zoneScore, adjacency:adjScore, noise:noiseScore, egress:egScore, efficiency:eff};
+  let raw = 0; for (const k in WEIGHTS) raw += WEIGHTS[k]*cats[k];
+  // Safety caps: a layout with a serious safety problem can't score well, however good the rest is.
+  const caps = [];
+  if (!exits.length) caps.push({cap:30, why:'no emergency exit'});
+  else {
+    if (unreachable.length) caps.push({cap:45, why:'crew could be trapped with no way out'});
+    if (exits.length < R.exitsRequired) caps.push({cap:65, why:'missing the required second exit'});
+  }
+  if (hazard.length) caps.push({cap:50, why:'noise at hearing-damage level (≥85 dBA)'});
+  if (!count.sleep) caps.push({cap:40, why:'no sleep quarters'});
+  else if (count.sleep < .5*R.zones.sleep) caps.push({cap:60, why:'not enough sleep space for the whole crew'});
+  if (ratio < .5) caps.push({cap:50, why:'less than half the living volume the crew needs'});
+  const capVal = caps.length ? Math.min(...caps.map(c=>c.cap)) : 100;
+  const capped = Math.min(raw, capVal);
+  const total = Math.min(Math.round(capped), checks.some(c=>c.status!=='pass') ? 99 : 100);  // 100 only when every check passes
+  const objective = capped + .5*raw;   // used by auto-fix: capped score first, raw score breaks ties
+  const grade = total>=90?'A':total>=75?'B':total>=60?'C':total>=40?'D':'F';
+  const conflicts = checks.filter(c => c.cat==='adjacency' && c.status!=='pass').length;
+  const suggestions = checks.filter(c => c.status!=='pass' && c.fix).sort((a,b)=>b.impact-a.impact);
+  return {R, count, checks, suggestions, cats, total, raw:Math.round(raw), caps, objective, unreachable, grade, noiseMap, dist, worstPath, exits, blockedRackSet,
+    cost: costOf(totalVol, S.structure),
+    stats:{interior, nhv, totalVol, mass: costOf(totalVol, S.structure).kg, launch: costOf(totalVol, S.structure).usd, perCrew:nhv/S.crew, circ, conflicts, maxEgress: worstCell>=0?dist[worstCell]:null, exits:exits.length}};
+}
+ 
+/* ===================== RENDER ===================== */
+let cellEls = [];
+function buildGrid(){
+  const grid = $('#grid'), wrap = $('#gridwrap');
+  const avail = Math.max(240, wrap.clientWidth - 30);
+  const cs = clamp(Math.floor((avail - G.W) / G.W), 14, 38);
+  grid.style.setProperty('--cs', cs+'px');
+  grid.style.gridTemplateColumns = `repeat(${G.W}, ${cs}px)`;
+  grid.innerHTML = ''; cellEls = [];
+  const frag = document.createDocumentFragment();
+  for (let i=0;i<G.W*G.H;i++){
+    const d = document.createElement('div');
+    d.className = 'c' + (G.mask[i] ? '' : ' out') + (G.mask[i] && G.heights[i] < MIN_CEILING ? ' low' : '');
+    d.dataset.i = i;
+    d.innerHTML = '<div class="ov"></div><span class="tx"></span>';
+    frag.appendChild(d); cellEls.push(d);
+  }
+  grid.appendChild(frag);
+}
+ 
+function heat(db){ // 35 → 75 dB : green → yellow → red
+  const t = clamp((db-35)/40, 0, 1);
+  const h = 130 - 130*t;
+  return `hsla(${h},90%,50%,.72)`;
+}
+ 
+function renderGrid(){
+  const cs = parseInt(getComputedStyle($('#grid')).getPropertyValue('--cs')) || 24;
+  const pathSet = new Set(overlay==='egress' ? A.worstPath : []);
+  for (let i=0;i<cellEls.length;i++){
+    const el = cellEls[i]; if (!G.mask[i]) continue;
+    const v = S.cells[i], ov = el.firstChild, tx = el.lastChild;
+    el.classList.toggle('exit', v==='exit');
+    el.style.background = v && v!=='exit' ? ZONES[v].color : '';
+    el.classList.toggle('path', pathSet.has(i));
+    let t = '';
+    if (v==='exit') t = 'EX';
+    if (overlay==='noise'){ ov.style.background = heat(A.noiseMap[i]); if (cs>=24 && v!=='exit') t = Math.round(A.noiseMap[i]); }
+    else if (overlay==='egress'){
+      const d = A.dist[i];
+      if (v==='storage') ov.style.background = A.blockedRackSet.has(i) ? 'repeating-linear-gradient(45deg,rgba(255,40,60,.9) 0 3px,rgba(0,0,0,.5) 3px 6px)' : 'rgba(0,0,0,.45)';
+      else if (d<0) ov.style.background = 'rgba(255,40,60,.85)';
+      else if (d>A.R.maxEgress) ov.style.background = 'rgba(255,150,40,.75)';
+      else ov.style.background = `rgba(60,170,255,${.15 + .6*d/Math.max(1,A.R.maxEgress)})`;
+      if (cs>=22 && v!=='exit' && v!=='storage') t = d<0 ? '✕' : d;
+    } else ov.style.background = '';
+    tx.textContent = t;
+  }
+  const lg = $('#legend');
+  const lgMode = overlay==='3d' ? (v3.mode==='zones' ? 'none' : v3.mode) : overlay;
+  if (lgMode==='noise') lg.innerHTML = `<span>35 dB</span><div class="bar" style="background:linear-gradient(90deg,${heat(35)},${heat(55)},${heat(75)})"></div><span>75 dB</span><span>· NASA-STD-3001 limits: sleep ${A.R.noiseLimit.sleep} dBA (${A.R.noiseLabel.sleep}), medical/work ${A.R.noiseLimit.work} dBA (NC-50), hazard ${A.R.noiseHazard} dBA · storage absorbs sound</span>`;
+  else if (lgMode==='egress') lg.innerHTML = `<span style="color:#5aaaff">■ distance to nearest hatch</span><span style="color:#ff9628">■ too far (&gt;${A.R.maxEgress} m)</span><span style="color:#ff283c">■ trapped (no way to any exit)</span><span style="color:#ff6b7a">▨ storage nobody can reach</span><span>□ outlined: longest escape route</span>`;
+  else lg.innerHTML = ZK.map(k=>`<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:${ZONES[k].color}"></span> ${ZONES[k].name}</span>`).join('') + `<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:#f2f4f8"></span> Hatch</span>` + (G.heights.some((h,i)=>G.mask[i]&&h<MIN_CEILING)?'<span>▨ low ceiling</span>':'');
+}
+ 
+function renderTools(){
+  const box = $('#tools'); const R = A.R;
+  const items = ZK.map(k => {
+    const req = R.zones[k], have = A.count[k];
+    const ct = req ? `${have}/${req}` : (have ? `${have}` : 'opt.');
+    const cls = req ? (have>=req ? 'ok' : 'low') : '';
+    return `<button class="tool ${tool===k?'active':''}" data-t="${k}"><span class="sw" style="background:${ZONES[k].color}"></span><span class="nm">${ZONES[k].name}</span><span class="ct ${cls}">${ct}</span><span class="kb">${ZONES[k].key}</span></button>`;
+  });
+  items.push(`<button class="tool ${tool==='exit'?'active':''}" data-t="exit"><span class="sw" style="background:#f2f4f8"></span><span class="nm">Hatch / exit</span><span class="ct ${A.exits.length>=R.exitsRequired?'ok':'low'}">${A.exits.length}/${R.exitsRequired}</span><span class="kb">H</span></button>`);
+  items.push(`<button class="tool ${tool==='erase'?'active':''}" data-t="erase"><span class="sw" style="background:var(--open)"></span><span class="nm">Eraser (corridor)</span><span class="kb">E</span></button>`);
+  box.innerHTML = items.join('');
+}
+ 
+function renderRules(){
+  const R = A.R;
+  const tag = src => src.url ? `<a class="src" href="${src.url}" target="_blank" rel="noopener">${src.short}</a>` : `<span class="src est">${src.short}</span>`;
+  $('#rules').innerHTML = [
+    ['Volume per person', `≥ ${R.volPerCrew} m³`, R.volSrc],
+    ['Total habitable volume', `≥ ${R.volPerCrew*S.crew} m³`, R.volSrc],
+    ...ZK.filter(k=>R.zones[k]).map(k=>[ZONES[k].name, `≥ ${R.zones[k]} m²`, R.zoneSrc[k]]),
+    ['Escape routes', 'no trapped areas', SRC.std],
+    ['Exits', `≥ ${R.exitsRequired}`, SRC.design],
+    ['Max escape distance', `${R.maxEgress} m`, SRC.design],
+    ['Sleep noise limit', `${R.noiseLimit.sleep} dBA (${R.noiseLabel.sleep})`, SRC.acou],
+    ['Work / medical noise', `${R.noiseLimit.work} dBA (NC-50)`, SRC.acou],
+    ['Hearing hazard', `< ${R.noiseHazard} dBA`, SRC.acou],
+  ].map(([a,b,src])=>`<li><span>${a}<br>${tag(src)}</span><span>${b}</span></li>`).join('');
+}
+ 
+function scoreColor(v){ return v>=.85?'var(--good)':v>=.6?'var(--warn)':'var(--bad)'; }
+function renderScore(){
+  const c = 2*Math.PI*50, t = A.total;
+  $('#ringFg').setAttribute('stroke-dasharray', `${c*t/100} ${c}`);
+  $('#ringFg').setAttribute('stroke', t>=75?'#3ddc84':t>=50?'#ffc145':'#ff5c6c');
+  $('#ringTx').textContent = t;
+  $('#grade').textContent = A.grade;
+  $('#grade').style.color = t>=75?'var(--good)':t>=50?'var(--warn)':'var(--bad)';
+  const fails = A.checks.filter(c=>c.status==='fail').length, warns = A.checks.filter(c=>c.status==='warn').length;
+  $('#gsub').innerHTML = `${S.crew} crew · ${S.days} days<br>${fails} fail · ${warns} warning${warns===1?'':'s'}`;
+  $('#hdrScore').textContent = `Score ${t} · ${A.grade}`;
+  $('#capbox').innerHTML = A.caps.length ? `<div class="capbox">⚠️ <b>Score capped at ${Math.min(...A.caps.map(c=>c.cap))}</b> (would be ${A.raw}) because of a safety problem: ${A.caps.map(c=>c.why).join('; ')}.</div>` : '';
+  $('#cats').innerHTML = Object.keys(WEIGHTS).map(k => {
+    const v = A.cats[k];
+    return `<div class="cat"><span>${CAT_NAMES[k]}</span><div class="tr"><div class="fi" style="width:${v*100}%;background:${scoreColor(v)}"></div></div><span class="v">${Math.round(v*WEIGHTS[k])}/${WEIGHTS[k]}</span></div>`;
+  }).join('');
+  const sug = A.suggestions.slice(0,6);
+  $('#sug').innerHTML = sug.length ? sug.map((s,ix) =>
+    `<li data-s="${ix}"><span class="gain">+${Math.max(1,Math.round(s.impact))} pts</span><div class="t">${s.fix}</div><div class="d">${s.title}</div></li>`).join('')
+    : '<div class="empty">🎉 Nothing to improve: this layout passes every check.</div>';
+  const groups = {};
+  A.checks.forEach((c,ix) => (groups[c.cat] = groups[c.cat] || []).push([c,ix]));
+  const order = {fail:0,warn:1,pass:2};
+  $('#checks').innerHTML = Object.keys(WEIGHTS).filter(k=>groups[k]).map(k =>
+    `<div class="grp">${CAT_NAMES[k]}</div>` + groups[k].sort((a,b)=>order[a[0].status]-order[b[0].status]).map(([c,ix]) =>
+      `<div class="ck" data-c="${ix}"><span class="ic ${c.status}">${c.status==='pass'?'✓':c.status==='warn'?'!':'✕'}</span><div><div>${c.title}</div><div class="d">${c.detail}</div></div></div>`).join('')).join('');
+}
+ 
+function renderStats(){
+  const s = A.stats;
+  $('#stats').innerHTML = [
+    [fmt(s.interior,0)+' m²','Floor area'],
+    [fmt(s.nhv,0)+' m³','Habitable volume'],
+    [fmt(s.perCrew)+' m³','Per crew member'],
+    [pct(s.circ),'Circulation space'],
+    [s.maxEgress==null?'—':s.maxEgress+' m','Longest escape'],
+  ].map(([b,t])=>`<div class="stat"><b>${b}</b><span>${t}</span></div>`).join('');
+  const st = COST.structures[S.structure||'rigid'];
+  $('#cost').innerHTML = `<div class="costhead">💰 Cost estimate <span>(every m³ has to be built and launched)</span></div>
+    <div class="stats">${[
+      [fmt(s.totalVol,0)+' m³','Pressurized volume'],
+      [tonnes(s.mass),'Structure mass'],
+      [money(s.launch),'Launch cost (to LEO)'],
+      [money(s.launch/S.crew),'Launch cost per crew'],
+      [money(s.launch/Math.max(1,s.nhv)*1),'Cost per m³ of living space'],
+    ].map(([b,t])=>`<div class="stat"><b>${b}</b><span>${t}</span></div>`).join('')}</div>
+    <div class="costnote">Rough estimate: ${st.name} ≈ ${fmt(st.kgPerM3,0)} kg per m³ (<a href="${st.url}" target="_blank" rel="noopener">source</a>) × $${COST.launchPerKg.toLocaleString()} per kg on Falcon Heavy (<a href="${COST.launchUrl}" target="_blank" rel="noopener">source</a>). Excludes building cost, supplies and going beyond low Earth orbit, which costs much more. Storage counts too: every m³ inside the hull is launched.</div>`;
+}
+ 
+function highlight(list){
+  cellEls.forEach(e=>e.classList.remove('hl'));
+  void $('#grid').offsetWidth;
+  list.forEach(i => cellEls[i] && cellEls[i].classList.add('hl'));
+}
+ 
+function refresh(){
+  A = analyze();
+  renderGrid(); renderTools(); renderRules(); renderScore(); renderStats();
+  if (overlay === '3d') draw3d();
+}
+let rafPending = false;
+function refreshSoon(){ if (rafPending) return; rafPending = true; requestAnimationFrame(()=>{ rafPending=false; refresh(); }); }
+ 
+/* ===================== EDITING ===================== */
+function pushHistory(){ history.push(JSON.stringify(S)); if (history.length>80) history.shift(); }
+function undo(){
+  if (!history.length) return toast('Nothing to undo');
+  const prev = JSON.parse(history.pop()), geoChanged = ['shape','a','b','height'].some(k => prev[k]!==S[k]);
+  S = prev; G = geometry(S); syncInputs(); if (geoChanged) buildGrid(); refresh();
+}
+function paintAt(i, erase){
+  if (i<0 || !G.mask[i]) return;
+  const t = erase ? 'erase' : tool;
+  if (t==='exit'){
+    if (!isBoundary(i)) return toast('Hatches must be on the outer wall');
+    S.cells[i] = S.cells[i]==='exit' ? null : 'exit'; return;
+  }
+  const x0 = i%G.W, y0 = (i/G.W)|0, off = Math.floor((brush-1)/2);
+  for (let dy=0; dy<brush; dy++) for (let dx=0; dx<brush; dx++){
+    const x=x0-off+dx, y=y0-off+dy; if (x<0||y<0||x>=G.W||y>=G.H) continue;
+    const j=y*G.W+x; if (!G.mask[j]) continue;
+    if (t==='erase') S.cells[j] = null;
+    else if (S.cells[j] !== 'exit') S.cells[j] = t;
+  }
+}
+const grid = $('#grid');
+grid.addEventListener('contextmenu', e => e.preventDefault());
+grid.addEventListener('pointerdown', e => {
+  const c = e.target.closest('.c'); if (!c) return;
+  e.preventDefault();
+  pushHistory(); painting = true; eraseDrag = e.button===2;
+  const i = +c.dataset.i; lastPainted = i; paintAt(i, eraseDrag); refreshSoon();
+});
+window.addEventListener('pointermove', e => {
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const c = el && el.closest && el.closest('.c');
+  if (c && grid.contains(c)){
+    const i = +c.dataset.i;
+    if (G.mask[i] && A){
+      const x=i%G.W, y=(i/G.W)|0, v=S.cells[i];
+      const d = A.dist[i];
+      $('#status').textContent = `(${x}, ${y}) · ${v==='exit'?'Hatch':v?ZONES[v].name:'Open / corridor'} · noise ${Math.round(A.noiseMap[i])} dB · ceiling ${fmt(G.heights[i])} m · ` +
+        (v==='storage' ? 'not walkable' : d<0 ? 'trapped: no way to any exit' : `${d} m to exit`);
+    }
+    if (painting && tool!=='exit' && +c.dataset.i !== lastPainted){ lastPainted = +c.dataset.i; paintAt(lastPainted, eraseDrag); refreshSoon(); }
+  }
+});
+window.addEventListener('pointerup', () => { painting = false; lastPainted = -1; });
+ 
+$('#tools').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b){ tool = b.dataset.t; renderTools(); } });
+$('#brush').addEventListener('click', e => { const b = e.target.closest('[data-b]'); if (!b) return; brush = +b.dataset.b; [...$('#brush').children].forEach(x=>x.classList.toggle('on', x===b)); });
+$('#overlay').addEventListener('click', e => { const b = e.target.closest('[data-o]'); if (!b) return;
+  overlay = b.dataset.o; [...$('#overlay').children].forEach(x=>x.classList.toggle('on', x===b));
+  const is3d = overlay === '3d';
+  $('#gridwrap').style.display = is3d ? 'none' : '';
+  $('#view3d').style.display = is3d ? '' : 'none';
+  if (is3d){ v3.spin = true; $('#v3spin').textContent = '⏸ Stop rotating'; resize3d(); loop3d(); }
+  renderGrid(); });
+$('#sug').addEventListener('click', e => { const li = e.target.closest('[data-s]'); if (li) highlight(A.suggestions[+li.dataset.s].cells); });
+$('#checks').addEventListener('click', e => { const d = e.target.closest('[data-c]'); if (d) highlight(A.checks[+d.dataset.c].cells); });
+ 
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input,textarea,select')) return;
+  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); return; }
+  const k = ZK.find(k => ZONES[k].key === e.key);
+  if (k) tool = k; else if (e.key.toLowerCase()==='h') tool='exit'; else if (e.key.toLowerCase()==='e') tool='erase'; else return;
+  renderTools();
+});
+ 
+/* ===================== MISSION INPUTS ===================== */
+$('#inShape').innerHTML = Object.entries(SHAPES).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('');
+function syncInputs(){
+  $('#inCrew').value = S.crew; $('#inDays').value = S.days; $('#inShape').value = S.shape;
+  $('#inA').value = S.a; $('#inB').value = S.b; $('#inH').value = S.height; $('#inStruct').value = S.structure || 'rigid';
+  const sh = SHAPES[S.shape];
+  $('#lblA').textContent = sh.a[0];
+  if (sh.b){ $('#wrapB').style.display=''; $('#lblB').textContent = sh.b[0]; } else $('#wrapB').style.display='none';
+}
+function validateGeo(){
+  S.a = clamp(Math.round(S.a)||10, 4, 30);
+  if (S.shape==='rect') S.b = clamp(Math.round(S.b)||8, 3, 30);
+  if (S.shape==='ring') S.b = clamp(Math.round(S.b)||6, 2, S.a-4);
+  if (S.shape==='lshape') S.b = clamp(Math.round(S.b)||4, 2, S.a-2);
+  S.height = clamp(+S.height||2.5, 1.8, 5);
+}
+function onGeoChange(){
+  pushHistory();
+  const old = {W:G.W, H:G.H, cells:S.cells};
+  validateGeo(); applyGeometry(old); syncInputs(); buildGrid(); refresh();
+}
+$('#inCrew').addEventListener('change', e => { pushHistory(); S.crew = clamp(Math.round(+e.target.value)||1,1,12); syncInputs(); refresh(); });
+$('#inDays').addEventListener('change', e => { pushHistory(); S.days = clamp(Math.round(+e.target.value)||1,1,1500); syncInputs(); refresh(); });
+$('#inShape').addEventListener('change', e => { S.shape = e.target.value; S.structure = S.shape==='dome' ? 'inflatable' : 'rigid'; const sh = SHAPES[S.shape]; S.a = sh.a[1]; S.b = sh.b ? sh.b[1] : S.b; onGeoChange(); });
+$('#inA').addEventListener('change', e => { S.a = +e.target.value; onGeoChange(); });
+$('#inB').addEventListener('change', e => { S.b = +e.target.value; onGeoChange(); });
+$('#inH').addEventListener('change', e => { S.height = +e.target.value; onGeoChange(); });
+$('#inStruct').addEventListener('change', e => { pushHistory(); S.structure = e.target.value; refresh(); });
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+  pushHistory(); const [c,d] = b.dataset.preset.split(',').map(Number); S.crew=c; S.days=d; syncInputs(); refresh(); toast(`Rules updated for ${c} crew × ${d} days`);
+}));
+ 
+/* ===================== AUTO-FIX ===================== */
+// Greedy local search: each round tries many small edits, keeps the one that raises the score most,
+// and repeats until nothing helps. Uses analyze() as the scoring function.
+const xy = i => `(${i%G.W}, ${(i/G.W)|0})`;
+const zname = v => v==='exit' ? 'hatch' : v ? ZONES[v].name.toLowerCase() : 'open floor';
+// Seeded random numbers: the same layout always gets the same auto-fix result (no surprises in a demo).
+let rng = Math.random;
+function seededRng(seed){ let t = seed >>> 0; return () => { t += 0x6D2B79F5; let r = Math.imul(t ^ t>>>15, 1 | t); r ^= r + Math.imul(r ^ r>>>7, 61 | r); return ((r ^ r>>>14) >>> 0) / 4294967296; }; }
+function layoutHash(){ const str = JSON.stringify([S.crew,S.days,S.shape,S.a,S.b,S.height,S.cells]); let h = 2166136261; for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function shuffle(a){ for (let i=a.length-1;i>0;i--){ const j=rng()*(i+1)|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function nbrs4(i){ const x=i%G.W, y=(i/G.W)|0, r=[]; for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx, ny=y+dy; if (nx>=0&&ny>=0&&nx<G.W&&ny<G.H&&G.mask[ny*G.W+nx]) r.push(ny*G.W+nx); } return r; }
+ 
+function candidates(a){
+  const C = [], cells = S.cells, n = cells.length, interior = [];
+  for (let i=0;i<n;i++) if (G.mask[i]) interior.push(i);
+  const set = (i,v,label) => C.push({cells:[i], vals:[v], label});
+  const egressBad = a.checks.some(c => c.cat==='egress' && c.status!=='pass');
+  // 1. hatches on the outer wall
+  if (egressBad) for (const i of interior) if (isBoundary(i) && cells[i]!=='exit') set(i,'exit',`Added a hatch at ${xy(i)}`);
+  // 2. open gaps in storage next to trapped areas
+  const trapped = new Set(a.unreachable);
+  for (const i of interior) if (cells[i]==='storage' && nbrs4(i).some(j=>trapped.has(j))) set(i,null,`Opened a gap in the storage at ${xy(i)}`);
+  // 3. grow zones that are too small (into open floor or surplus zones)
+  for (const k of ZK){
+    const req = a.R.zones[k]; if (!req || a.count[k] >= req) continue;
+    const front = new Set();
+    for (const i of interior) if (cells[i]===k) nbrs4(i).forEach(j=>{ const v=cells[j]; if (v!==k && v!=='exit' && (!v || a.count[v] > (a.R.zones[v]||0))) front.add(j); });
+    let pool = front.size ? [...front] : interior.filter(i=>!cells[i]);
+    shuffle(pool).slice(0,30).forEach(j => set(j,k,`Added ${zname(k)} at ${xy(j)}${cells[j]?` (was surplus ${zname(cells[j])})`:''}`));
+  }
+  // 4. move / swap / clear cells that a failing check points at
+  const bad = new Set();
+  a.checks.forEach(c => { if (c.status!=='pass' && c.cat!=='zones' && c.cat!=='efficiency') c.cells.forEach(i=>bad.add(i)); });
+  const badList = shuffle([...bad].filter(i=>cells[i] && cells[i]!=='exit')).slice(0,10);
+  for (const i of badList){
+    set(i,null,`Cleared ${zname(cells[i])} at ${xy(i)}`);
+    for (const j of shuffle(interior.filter(j=>cells[j]!==cells[i] && cells[j]!=='exit')).slice(0,18)){
+      C.push({cells:[i,j], vals:[cells[j],cells[i]], label: cells[j] ? `Swapped ${zname(cells[i])} ${xy(i)} with ${zname(cells[j])} ${xy(j)}` : `Moved ${zname(cells[i])} from ${xy(i)} to ${xy(j)}`});
+    }
+  }
+  // 5. too much empty floor: fill open cells next to zones that are the furthest below their requirement
+  if (a.stats.circ > .40) for (const i of shuffle(interior.filter(i=>!cells[i])).slice(0,12)){
+    const near = nbrs4(i).map(j=>cells[j]).filter(v=>v && v!=='exit');
+    if (near.length) set(i, near[0], `Added ${zname(near[0])} at ${xy(i)} to use empty floor`);
+  }
+  return C;
+}
+ 
+let fixing = false;
+async function autoFix(){
+  if (fixing) return; fixing = true;
+  const btn = $('#btnFix'); btn.disabled = true;
+  pushHistory();
+  const before = A.total, log = [], changed = new Set(), t0 = performance.now();
+  const beforeLayout = {...S, cells:[...S.cells]}, beforeA = A;
+  rng = seededRng(layoutHash());
+  let cur = analyze();
+  for (let round=0; round<60; round++){
+    const C = candidates(cur); let best = null;
+    for (const c of C){
+      const old = c.cells.map(i=>S.cells[i]);
+      c.cells.forEach((i,k)=>S.cells[i]=c.vals[k]);
+      const a = analyze();
+      if (a.objective > cur.objective + .01 && (!best || a.objective > best.a.objective)) best = {c, a};
+      c.cells.forEach((i,k)=>S.cells[i]=old[k]);
+    }
+    if (!best) break;
+    best.c.cells.forEach((i,k)=>{ S.cells[i]=best.c.vals[k]; changed.add(i); });
+    log.push(`${best.c.label} → ${best.a.total}`);
+    cur = best.a;
+    btn.textContent = `✨ Fixing… ${cur.total}`;
+    await new Promise(r=>setTimeout(r,0));
+    if (performance.now()-t0 > 20000) break;   // safety stop for very large habitats
+  }
+  refresh();
+  btn.disabled = false; btn.textContent = '✨ Auto-fix'; fixing = false;
+  if (!log.length){ history.pop(); $('#fixlog').innerHTML = `<div class="fixlog">✨ Auto-fix found no single change that improves this layout (score ${A.total}).</div>`; return; }
+  $('#fixlog').innerHTML = `<div class="fixlog"><b>✨ Auto-fix: ${before} → ${A.total}</b> (+${A.total-before}) in ${log.length} change${log.length>1?'s':''}
+    <div style="margin-top:6px;display:flex;gap:6px"><button class="small" id="fixShow">Show changed cells</button><button class="small" id="fixUndo">Undo auto-fix</button><button class="small" id="fixClose">Hide</button></div>
+    <ol>${log.map(l=>`<li>${l}</li>`).join('')}</ol></div>`;
+  const cells = [...changed];
+  $('#fixShow').onclick = () => highlight(cells);
+  $('#fixUndo').onclick = () => { undo(); $('#fixlog').innerHTML=''; $('#baCard').style.display='none'; };
+  $('#fixClose').onclick = () => $('#fixlog').innerHTML='';
+  highlight(cells);
+  showBeforeAfter(beforeLayout, beforeA, {...S, cells:[...S.cells]}, A, log.length);
+  toast(`Auto-fix: ${before} → ${A.total}`);
+}
+ 
+/* Before / after comparison shown after an auto-fix */
+function showBeforeAfter(L0, A0, L1, A1, nChanges){
+  const card = $('#baCard');
+  const diff = []; for (let i=0;i<L1.cells.length;i++) if (L0.cells[i] !== L1.cells[i]) diff.push(i);
+  const cnt = (a,st) => a.checks.filter(c=>c.status===st).length;
+  const capTxt = a => a.caps.length ? `capped at ${Math.min(...a.caps.map(c=>c.cap))}: ${a.caps.map(c=>c.why).join('; ')}` : '';
+  const col = t => t>=75?'var(--good)':t>=50?'var(--warn)':'var(--bad)';
+  const row = (label, b, a, fmtv, higherIsBetter=true) => {
+    const d = a - b, cls = Math.abs(d) < 1e-9 ? 'same' : ((d>0) === higherIsBetter ? 'up' : 'down');
+    const sign = d > 0 ? '+' : '';
+    return `<tr><th>${label}</th><td>${fmtv(b)}</td><td>${fmtv(a)}</td><td class="${cls}">${cls==='same'?'no change':sign+fmtv(d)}</td></tr>`;
+  };
+  card.innerHTML = `
+    <div class="edhead"><h2>Before / after auto-fix</h2><div class="spacer"></div>
+      <button class="small" id="baKeep">Keep after ✓</button><button class="small" id="baBack">Go back to before</button><button class="small" id="baClose">Close</button></div>
+    <div class="ba">
+      <div class="bapane"><div class="lab">Before</div><div class="big" style="color:${col(A0.total)}">${A0.total} <span style="font-size:18px">${A0.grade}</span></div>
+        <canvas id="baC0"></canvas><div class="cap">${capTxt(A0)}</div></div>
+      <div class="bapane after"><div class="lab">After · ${nChanges} change${nChanges>1?'s':''} (${diff.length} cells, outlined)</div><div class="big" style="color:${col(A1.total)}">${A1.total} <span style="font-size:18px">${A1.grade}</span></div>
+        <canvas id="baC1"></canvas><div class="cap">${capTxt(A1)}</div></div>
+    </div>
+    <table class="badiff"><thead><tr><th></th><th>Before</th><th>After</th><th>Change</th></tr></thead><tbody>
+      ${row('Total score', A0.total, A1.total, v=>Math.round(v))}
+      ${Object.keys(WEIGHTS).map(k => row(CAT_NAMES[k], A0.cats[k]*WEIGHTS[k], A1.cats[k]*WEIGHTS[k], v=>Math.round(v))).join('')}
+      ${row('Failed checks', cnt(A0,'fail'), cnt(A1,'fail'), v=>v, false)}
+      ${row('Warnings', cnt(A0,'warn'), cnt(A1,'warn'), v=>v, false)}
+      ${row('Longest escape (m)', A0.stats.maxEgress ?? 0, A1.stats.maxEgress ?? 0, v=>v, false)}
+      ${row('Launch cost', A0.stats.launch, A1.stats.launch, v=>money(Math.abs(v)), false)}
+    </tbody></table>`;
+  card.style.display = '';
+  const w = Math.min(380, (card.clientWidth - 60) / 2) || 300;
+  drawThumb($('#baC0'), L0, w);
+  drawThumb($('#baC1'), L1, w, diff);
+  $('#baKeep').onclick = () => { card.style.display='none'; toast('Kept the auto-fixed layout'); };
+  $('#baBack').onclick = () => { undo(); card.style.display='none'; $('#fixlog').innerHTML=''; toast('Back to the layout before auto-fix'); };
+  $('#baClose').onclick = () => { card.style.display='none'; };
+  card.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+$('#btnFix').onclick = autoFix;
+ 
+/* ===================== EXAMPLES ===================== */
+function loadExample(bad){
+  pushHistory();
+  S = {crew:6, days:180, shape:'rect', a:12, b:8, height:2.5, structure:'rigid', cells:[]};
+  applyGeometry(null);
+  const R = (k,x0,y0,x1,y1) => { for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) S.cells[y*G.W+x]=k; };
+  if (!bad){
+    R('sleep',0,0,4,2); R('storage',5,0,5,2); R('work',6,0,8,2);
+    R('storage',4,2,4,2);                                    // keep the bed nearest the gym out of the NC-40 zone
+    R('storage',9,0,11,0); R('storage',9,2,11,2);            // two shelf rows with a walkway between
+    R('storage',0,4,0,7); R('storage',4,7,8,7);              // single-depth racks along the walls
+    R('medical',2,4,3,5); R('hygiene',2,6,3,7);
+    R('food',7,4,10,5); R('exercise',9,6,11,7); R('exercise',11,5,11,5);
+    R('exit',0,3,0,3); R('exit',11,3,11,3);
+  } else {
+    R('sleep',0,0,3,2); R('exercise',4,0,5,2); R('work',6,0,9,1);
+    R('food',6,4,8,5); R('hygiene',9,4,10,5);
+    R('storage',0,6,11,6); R('storage',0,4,1,5);
+    R('exit',11,3,11,3);
+  }
+  syncInputs(); buildGrid(); refresh();
+  toast(bad ? 'Flawed example loaded: try fixing it!' : 'Example loaded');
+}
+$('#btnExGood').onclick = () => { $('#baCard').style.display='none'; $('#fixlog').innerHTML=''; loadExample(false); };
+$('#btnExBad').onclick = () => { $('#baCard').style.display='none'; $('#fixlog').innerHTML=''; loadExample(true); };
+$('#btnUndo').onclick = undo;
+$('#btnClear').onclick = () => { pushHistory(); S.cells = S.cells.map(()=>null); refresh(); };
+ 
+/* ===================== SAVE / COMPARE ===================== */
+function loadStore(){ try { const v = localStorage.getItem(STORE_KEY); if (v) return JSON.parse(v); } catch(e){} return memStore; }
+function saveStore(list){ memStore = list; try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch(e){} }
+function snapshot(name){
+  return {id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), name, savedAt:new Date().toISOString(),
+    crew:S.crew, days:S.days, shape:S.shape, a:S.a, b:S.b, height:S.height, structure:S.structure, cells:[...S.cells],
+    total:A.total, grade:A.grade, cats:{...A.cats}, stats:{...A.stats}};
+}
+$('#btnSave').onclick = () => {
+  const list = loadStore();
+  const name = $('#saveName').value.trim() || `Layout ${list.length+1}`;
+  list.push(snapshot(name)); saveStore(list); $('#saveName').value='';
+  renderSaved(); toast(`Saved "${name}"`);
+};
+function drawThumb(cv, L, size=180, mark=null){
+  const g = geometry(L), s = Math.max(2, Math.floor(size / Math.max(g.W, g.H)));
+  cv.width = g.W*s; cv.height = g.H*s; const ctx = cv.getContext('2d');
+  for (let i=0;i<g.W*g.H;i++){ if (!g.mask[i]) continue; const v = L.cells[i];
+    ctx.fillStyle = v==='exit' ? '#f2f4f8' : v ? ZONES[v].color : '#1f2536';
+    ctx.fillRect((i%g.W)*s, ((i/g.W)|0)*s, s-.5, s-.5); }
+  if (mark) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.5, s/9);
+    for (const i of mark){ const lw = ctx.lineWidth; ctx.strokeRect((i%g.W)*s + lw/2, ((i/g.W)|0)*s + lw/2, s - lw - .5, s - lw - .5); } }
+}
+function renderSaved(){
+  const list = loadStore(), box = $('#saved');
+  [...compareSel].forEach(id => { if (!list.find(l=>l.id===id)) compareSel.delete(id); });
+  if (!list.length){ box.innerHTML = '<div class="empty">No saved layouts yet. Save a few variations, then tick them to compare side by side.</div>'; $('#compare').innerHTML=''; return; }
+  box.innerHTML = list.map(L => `<div class="sv ${compareSel.has(L.id)?'sel':''}" data-id="${L.id}">
+    <canvas></canvas>
+    <div class="row" style="align-items:center"><div style="min-width:0"><div class="nm">${esc(L.name)}</div><div class="mt">${L.crew} crew · ${L.days} d · ${SHAPES[L.shape].name}</div></div><div class="sc" style="flex:none;color:${L.total>=75?'var(--good)':L.total>=50?'var(--warn)':'var(--bad)'}">${L.total}</div></div>
+    <div class="bt"><label style="font-size:12px;display:flex;gap:4px;align-items:center;flex:1"><input type="checkbox" data-cmp ${compareSel.has(L.id)?'checked':''}> Compare</label>
+    <button class="small" data-load>Load</button><button class="small" data-del>✕</button></div></div>`).join('');
+  box.querySelectorAll('.sv').forEach(el => drawThumb(el.querySelector('canvas'), list.find(l=>l.id===el.dataset.id)));
+  renderCompare(list);
+}
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+$('#saved').addEventListener('click', e => {
+  const card = e.target.closest('.sv'); if (!card) return;
+  const id = card.dataset.id, list = loadStore(), L = list.find(l=>l.id===id);
+  if (e.target.matches('[data-cmp]')){
+    if (e.target.checked){ if (compareSel.size>=3){ e.target.checked=false; return toast('Compare up to 3 layouts'); } compareSel.add(id); } else compareSel.delete(id);
+    renderSaved();
+  } else if (e.target.matches('[data-load]')){
+    pushHistory();
+    S = {crew:L.crew, days:L.days, shape:L.shape, a:L.a, b:L.b, height:L.height, structure:L.structure||'rigid', cells:[...L.cells]};
+    G = geometry(S); syncInputs(); buildGrid(); refresh(); toast(`Loaded "${L.name}"`);
+  } else if (e.target.matches('[data-del]')){
+    saveStore(list.filter(l=>l.id!==id)); compareSel.delete(id); renderSaved();
+  }
+});
+function renderCompare(list){
+  const sel = list.filter(l => compareSel.has(l.id));
+  if (sel.length < 2){ $('#compare').innerHTML = list.length>=2 ? '<div class="empty">Tick 2–3 layouts to compare them.</div>' : ''; return; }
+  const rows = [
+    ['Total score', L=>L.total, 'max', v=>v],
+    ...Object.keys(WEIGHTS).map(k => [CAT_NAMES[k], L=>Math.round(L.cats[k]*WEIGHTS[k]), 'max', v=>`${v}/${WEIGHTS[k]}`]),
+    ['Volume per crew', L=>L.stats.perCrew, 'max', v=>fmt(v)+' m³'],
+    ['Habitable volume', L=>L.stats.nhv, 'min', v=>fmt(v,0)+' m³ (smaller = cheaper)'],
+    ['Structure mass', L=>L.stats.mass ?? costOf(L.stats.totalVol, L.structure).kg, 'min', v=>tonnes(v)],
+    ['Launch cost', L=>L.stats.launch ?? costOf(L.stats.totalVol, L.structure).usd, 'min', v=>money(v)],
+    ['Conflicting neighbours', L=>L.stats.conflicts, 'min', v=>v],
+    ['Longest escape', L=>L.stats.maxEgress ?? 999, 'min', v=>v===999?'—':v+' m'],
+    ['Exits', L=>L.stats.exits, 'max', v=>v],
+  ];
+  $('#compare').innerHTML = `<table class="cmp"><thead><tr><th></th>${sel.map(L=>`<th>${esc(L.name)}<br><span style="font-size:11px">${L.crew} crew · ${L.days} d</span></th>`).join('')}</tr></thead><tbody>` +
+    rows.map(([lab,get,dir,f]) => { const vals = sel.map(get); const best = dir==='max'?Math.max(...vals):Math.min(...vals);
+      return `<tr><th>${lab}</th>${vals.map(v=>`<td class="${v===best && new Set(vals).size>1?'best':''}">${f(v)}</td>`).join('')}</tr>`; }).join('') + '</tbody></table>';
+}
+ 
+/* Export / import via modal (downloads are blocked in some viewers) */
+let modalMode = 'export';
+function openModal(mode){
+  modalMode = mode; $('#modal').classList.add('on');
+  $('#mTitle').textContent = mode==='export' ? 'Export layouts' : 'Import layouts';
+  $('#mHelp').textContent = mode==='export' ? 'Copy this JSON and keep it, or share it with your team. It contains every saved layout plus the current one.' : 'Paste exported JSON, or choose a .json file.';
+  $('#mText').value = mode==='export' ? JSON.stringify({version:1, current:snapshot('Current'), saved:loadStore()}, null, 1) : '';
+  $('#mOk').style.display = $('#mFile').style.display = mode==='import' ? '' : 'none';
+  $('#mCopy').style.display = mode==='export' ? '' : 'none';
+}
+$('#btnExport').onclick = () => openModal('export');
+$('#btnImport').onclick = () => openModal('import');
+$('#mClose').onclick = () => $('#modal').classList.remove('on');
+$('#mCopy').onclick = async () => { try { await navigator.clipboard.writeText($('#mText').value); toast('Copied'); } catch(e){ $('#mText').select(); toast('Press Ctrl+C to copy'); } };
+$('#mFile').onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => $('#mText').value = r.result; r.readAsText(f); };
+$('#mOk').onclick = () => {
+  try {
+    const data = JSON.parse($('#mText').value);
+    const incoming = Array.isArray(data) ? data : (data.saved || []);
+    if (data.current) incoming.push({...data.current, name: data.current.name==='Current' ? 'Imported layout' : data.current.name});
+    const ok = incoming.filter(L => L && L.cells && SHAPES[L.shape]).map(L => ({...L, id: Date.now().toString(36)+Math.random().toString(36).slice(2,6)}));
+    if (!ok.length) throw 0;
+    saveStore(loadStore().concat(ok)); renderSaved(); $('#modal').classList.remove('on'); toast(`Imported ${ok.length} layout${ok.length>1?'s':''}`);
+  } catch(e){ toast('That JSON could not be read'); }
+};
+ 
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('on'), 1800); }
+ 
+let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(()=>{ buildGrid(); renderGrid(); }, 150); });
+ 
+/* ===================== 3D VIEW ===================== */
+// A tiny dependency-free 3D renderer: every grid cell becomes a block, faces are projected with
+// perspective and drawn back-to-front (painter's algorithm) on a 2D canvas. Works offline.
+const v3 = {yaw: -0.65, pitch: 0.75, zoom: 1, spin: true, mode: 'zones', labels: true, dragging: false, last: 0};
+const ZONE_H = {sleep:1.6, exercise:1.2, hygiene:2.1, food:0.9, work:1.0, medical:1.3, storage:2.2}; // block heights (m), like furniture
+const LIGHT = (() => { const v=[0.45,1,0.3], m=Math.hypot(...v); return v.map(x=>x/m); })();
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255, n>>8&255, n&255]; }
+function shadeCss(rgb, k, a=1){ return `rgba(${Math.round(rgb[0]*k)},${Math.round(rgb[1]*k)},${Math.round(rgb[2]*k)},${a})`; }
+function parseColor(css){ // supports #hex, rgba(), hsla() via a 1px canvas
+  const c = parseColor.c || (parseColor.c = document.createElement('canvas').getContext('2d'));
+  c.fillStyle = '#000'; c.fillStyle = css; const v = c.fillStyle;
+  if (v[0]==='#') return hexRgb(v);
+  const m = v.match(/[\d.]+/g).map(Number); return [m[0],m[1],m[2]];
+}
+function resize3d(){
+  const cv = $('#c3d'), r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio||1);
+  cv.width = Math.max(300, r.width*dpr); cv.height = Math.max(200, r.height*dpr);
+}
+function loop3d(){
+  if (overlay !== '3d') return;
+  const now = performance.now(), dt = v3.last ? Math.min(50, now - v3.last) : 16; v3.last = now;
+  if (v3.spin && !v3.dragging) v3.yaw += dt * 0.00025;
+  draw3d();
+  requestAnimationFrame(loop3d);
+}
+function topColor(i, v){
+  if (v3.mode==='noise') return parseColor(heat(A.noiseMap[i]));
+  if (v3.mode==='egress'){
+    if (v==='storage') return [70,74,86];
+    const d = A.dist[i];
+    if (v==='exit') return [242,244,248];
+    if (d<0) return [255,40,60];
+    if (d>A.R.maxEgress) return [255,150,40];
+    const t = d/Math.max(1,A.R.maxEgress); return [Math.round(40+40*t), Math.round(120+60*(1-t)), 255];
+  }
+  if (v==='exit') return [242,244,248];
+  return v ? hexRgb(ZONES[v].color) : [34,40,58];
+}
+function draw3d(){
+  if (!A || overlay!=='3d') return;
+  const cv = $('#c3d'), ctx = cv.getContext('2d'), Wc = cv.width, Hc = cv.height;
+  const {W,H,mask,heights} = G, cells = S.cells;
+  ctx.clearRect(0,0,Wc,Hc);
+  const cx = W/2, cz = H/2, maxDim = Math.max(W,H);
+  const D = maxDim * 1.7 / v3.zoom, f = Math.min(Wc,Hc) * 1.25;
+  const cy = Math.cos(v3.yaw), sy = Math.sin(v3.yaw), cp = Math.cos(v3.pitch), sp = Math.sin(v3.pitch);
+  const proj = (x,y,z) => {
+    x -= cx; z -= cz; y -= 0.8;
+    const x1 = x*cy - z*sy, z1 = x*sy + z*cy;
+    const y2 = y*cp + z1*sp, z2 = -y*sp + z1*cp + D;
+    return [Wc/2 + f*x1/z2, Hc*0.52 - f*y2/z2, z2];
+  };
+  const faces = [];
+  // face: list of world points (counter-clockwise seen from outside), fill, stroke, normal
+  const addFace = (pts, rgb, normal, opts={}) => {
+    const P = pts.map(p=>proj(...p));
+    let area = 0; for (let k=0;k<P.length;k++){ const a=P[k], b=P[(k+1)%P.length]; area += a[0]*b[1]-b[0]*a[1]; }
+    const facing = area > 0;                       // screen-space winding test
+    if (opts.farOnly ? facing : !facing) return;   // hull walls: draw only the far side (cut-away view)
+    const depth = P.reduce((s,p)=>s+p[2],0)/P.length;
+    const lit = .55 + .45*Math.max(0, normal[0]*LIGHT[0]+normal[1]*LIGHT[1]+normal[2]*LIGHT[2]);
+    faces.push({P, depth, fill: opts.fill || shadeCss(rgb, lit, opts.alpha ?? 1), stroke: opts.stroke || 'rgba(0,0,0,.35)', lw: opts.lw || 1});
+  };
+  const valAt = (x,z) => (x<0||z<0||x>=W||z>=H||!mask[z*W+x]) ? undefined : cells[z*W+x];
+  const blockH = (i) => { const v = cells[i]; if (!v) return 0; const cap = Math.max(.4, heights[i]-.05);
+    return v==='exit' ? Math.min(2.1, cap) : Math.min(ZONE_H[v]||1, cap); };
+  for (let z=0; z<H; z++) for (let x=0; x<W; x++){
+    const i = z*W+x; if (!mask[i]) continue;
+    const v = cells[i], h = blockH(i), top = topColor(i, v), side = v && v!=='exit' ? hexRgb(ZONES[v].color) : v==='exit' ? [220,224,232] : [34,40,58];
+    // top (or floor tile)
+    addFace([[x,h,z],[x,h,z+1],[x+1,h,z+1],[x+1,h,z]], top, [0,1,0], {stroke: h ? 'rgba(0,0,0,.35)' : 'rgba(255,255,255,.05)'});
+    if (h > 0){
+      // side faces only where the neighbour is lower or a different zone
+      const sides = [
+        {dx:1, dz:0, pts:[[x+1,0,z],[x+1,h,z],[x+1,h,z+1],[x+1,0,z+1]], n:[1,0,0]},
+        {dx:-1,dz:0, pts:[[x,0,z+1],[x,h,z+1],[x,h,z],[x,0,z]],         n:[-1,0,0]},
+        {dx:0, dz:1, pts:[[x+1,0,z+1],[x+1,h,z+1],[x,h,z+1],[x,0,z+1]], n:[0,0,1]},
+        {dx:0, dz:-1,pts:[[x,0,z],[x,h,z],[x+1,h,z],[x+1,0,z]],         n:[0,0,-1]},
+      ];
+      for (const sd of sides){
+        const nv = valAt(x+sd.dx, z+sd.dz), j = (z+sd.dz)*W + (x+sd.dx);
+        if (nv === v && blockH(j) >= h) continue;
+        addFace(sd.pts, side, sd.n);
+      }
+    }
+    // hull walls on the outer edge (translucent, far side only)
+    const wh = heights[i];
+    for (const [dx,dz,pts,n] of [
+      [1,0,[[x+1,0,z],[x+1,wh,z],[x+1,wh,z+1],[x+1,0,z+1]],[1,0,0]],
+      [-1,0,[[x,0,z+1],[x,wh,z+1],[x,wh,z],[x,0,z]],[-1,0,0]],
+      [0,1,[[x+1,0,z+1],[x+1,wh,z+1],[x,wh,z+1],[x,0,z+1]],[0,0,1]],
+      [0,-1,[[x,0,z],[x,wh,z],[x+1,wh,z],[x+1,0,z]],[0,0,-1]]]){
+      if (valAt(x+dx, z+dz) === undefined)
+        addFace(pts, [150,175,230], n, {farOnly:true, fill:'rgba(140,165,230,.13)', stroke:'rgba(160,185,240,.28)'});
+    }
+  }
+  faces.sort((a,b)=>b.depth-a.depth);
+  for (const fc of faces){
+    ctx.beginPath(); fc.P.forEach((p,k)=> k ? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1])); ctx.closePath();
+    ctx.fillStyle = fc.fill; ctx.fill(); ctx.strokeStyle = fc.stroke; ctx.lineWidth = fc.lw; ctx.stroke();
+  }
+  // outline of the hull rim (near side too, as a thin line, so the shape is always visible)
+  ctx.strokeStyle = 'rgba(170,195,250,.45)'; ctx.lineWidth = 1.2; ctx.beginPath();
+  for (let z=0; z<H; z++) for (let x=0; x<W; x++){ const i=z*W+x; if (!mask[i]) continue; const wh = heights[i];
+    for (const [dx,dz,a,b] of [[1,0,[x+1,z],[x+1,z+1]],[-1,0,[x,z],[x,z+1]],[0,1,[x,z+1],[x+1,z+1]],[0,-1,[x,z],[x+1,z]]]){
+      if (valAt(x+dx,z+dz) !== undefined) continue;
+      const p = proj(a[0],wh,a[1]), q = proj(b[0],wh,b[1]); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); } }
+  ctx.stroke();
+  // longest escape route in exits mode
+  if (v3.mode==='egress' && A.worstPath.length > 1){
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.setLineDash([6,4]); ctx.beginPath();
+    A.worstPath.forEach((i,k) => { const p = proj((i%W)+.5, blockH(i)+.08, ((i/W)|0)+.5); k ? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1]); });
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  // labels at the centre of each zone's biggest piece
+  if (v3.labels){
+    const dpr = Wc / cv.getBoundingClientRect().width;
+    ctx.font = `600 ${Math.round(11*dpr)}px system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const done = new Set();
+    for (const k of [...ZK, 'exit']){
+      const seen = new Set(); let best = [];
+      for (let i=0;i<cells.length;i++){ if (!mask[i] || cells[i]!==k || seen.has(i)) continue;
+        const comp=[i]; seen.add(i);
+        for (let h=0;h<comp.length;h++){ const c=comp[h], x=c%W, y=(c/W)|0;
+          for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue; const j=ny*W+nx; if (mask[j]&&cells[j]===k&&!seen.has(j)){ seen.add(j); comp.push(j);} } }
+        if (k==='exit'){ const p = proj((i%W)+.5, blockH(i)+.45, ((i/W)|0)+.5); drawTag(ctx, 'Hatch', p, dpr); }
+        else if (comp.length > best.length) best = comp; }
+      if (k==='exit' || !best.length) continue;
+      let sx=0, sz=0, mh=0; best.forEach(i=>{ sx+=(i%W)+.5; sz+=((i/W)|0)+.5; mh=Math.max(mh,blockH(i)); });
+      drawTag(ctx, ZONES[k].name, proj(sx/best.length, mh+.55, sz/best.length), dpr);
+    }
+  }
+}
+function drawTag(ctx, text, p, dpr){
+  const w = ctx.measureText(text).width + 10*dpr, h = 17*dpr;
+  ctx.fillStyle = 'rgba(10,12,20,.78)'; ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(p[0]-w/2, p[1]-h/2, w, h, 5*dpr); else ctx.rect(p[0]-w/2, p[1]-h/2, w, h);
+  ctx.fill(); ctx.fillStyle = '#e7ebf4'; ctx.fillText(text, p[0], p[1]+.5);
+}
+(() => {
+  const cv = $('#c3d'), pts = new Map(); let pinch0 = 0, zoom0 = 1;
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); v3.dragging = true;
+    v3.spin = false; $('#v3spin').textContent = '▶ Rotate';
+    if (pts.size===2){ const [a,b] = [...pts.values()]; pinch0 = Math.hypot(a[0]-b[0], a[1]-b[1]); zoom0 = v3.zoom; } });
+  cv.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return;
+    const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pts.size===2){ const [a,b] = [...pts.values()]; v3.zoom = clamp(zoom0 * Math.hypot(a[0]-b[0], a[1]-b[1]) / (pinch0||1), .5, 3); }
+    else { v3.yaw += (e.clientX-prev[0]) * .008; v3.pitch = clamp(v3.pitch + (e.clientY-prev[1]) * .006, .2, 1.45); }
+    draw3d(); });
+  const up = e => { pts.delete(e.pointerId); if (!pts.size) v3.dragging = false; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('wheel', e => { e.preventDefault(); v3.zoom = clamp(v3.zoom * (e.deltaY < 0 ? 1.1 : 1/1.1), .5, 3); draw3d(); }, {passive:false});
+  $('#v3spin').onclick = () => { v3.spin = !v3.spin; $('#v3spin').textContent = v3.spin ? '⏸ Stop rotating' : '▶ Rotate'; };
+  $('#v3reset').onclick = () => { Object.assign(v3, {yaw:-.65, pitch:.75, zoom:1}); draw3d(); };
+  $('#v3labels').onclick = () => { v3.labels = !v3.labels; $('#v3labels').textContent = 'Labels: ' + (v3.labels ? 'on' : 'off'); draw3d(); };
+  $('#v3mode').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; v3.mode = b.dataset.m;
+    [...$('#v3mode').children].forEach(x=>x.classList.toggle('on', x===b)); renderGrid(); draw3d(); });
+  window.addEventListener('resize', () => { if (overlay==='3d'){ resize3d(); draw3d(); } });
+})();
+ 
+/* ===================== TUTORIAL ===================== */
+const TOUR = [
+  {sel:'#cardMission', title:'1. Describe the mission', body:'Set the crew size, mission length and habitat shape. The rules (living space, zone sizes, noise limits) change automatically, so try the preset buttons.'},
+  {sel:'#cardTools',   title:'2. Pick a zone', body:'Choose a zone (or press keys 1–7). <b>Hatch</b> places an emergency exit on the outer wall, and the eraser makes open corridor. Each zone shows how many m² you have versus how many are needed.'},
+  {sel:'#gridwrap',    title:'3. Paint the layout', body:'Drag on the grid to paint and right-click to erase. Switch to <b>Noise map</b> or <b>Exit paths</b> above the grid to see loud spots and escape routes, or <b>🧊 3D view</b> to see your habitat in 3D.'},
+  {sel:'#cardScore',   title:'4. Read your score', body:'The score updates live and shows the cost estimate under the grid. Under <b>Top improvements</b>, click a suggestion to highlight the cells it is about.'},
+  {sel:'#btnFix',      title:'5. Auto-fix & compare', body:'Stuck? <b>✨ Auto-fix</b> improves the layout step by step and lists every change (Undo restores it). Save versions under <b>Save &amp; compare</b> to compare them side by side.'},
+];
+let tourI = -1;
+function tourShow(i){
+  document.querySelectorAll('.tour-hi').forEach(e=>e.classList.remove('tour-hi'));
+  if (i < 0 || i >= TOUR.length){ tourEnd(); return; }
+  tourI = i; const st = TOUR[i], el = $(st.sel), pop = $('#tourpop');
+  el.scrollIntoView({block:'center', behavior:'instant'});
+  el.classList.add('tour-hi');
+  $('#tStep').textContent = `Quick tour · step ${i+1} of ${TOUR.length}`;
+  $('#tTitle').textContent = st.title; $('#tBody').innerHTML = st.body;
+  $('#tBack').disabled = i===0; $('#tNext').textContent = i===TOUR.length-1 ? 'Start designing' : 'Next';
+  pop.classList.add('on');
+  requestAnimationFrame(() => {
+    const r = el.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight, vw = innerWidth, vh = innerHeight;
+    let left, top;
+    if (r.right + pw + 16 < vw) { left = r.right + 12; top = r.top; }            // right of target
+    else if (r.left - pw - 16 > 0) { left = r.left - pw - 12; top = r.top; }    // left of target
+    else { left = r.left; top = r.bottom + ph + 12 < vh ? r.bottom + 12 : r.top - ph - 12; } // below / above
+    pop.style.left = clamp(left, 12, vw - pw - 12) + 'px';
+    pop.style.top = clamp(top, 12, vh - ph - 12) + 'px';
+  });
+}
+function tourEnd(){
+  document.querySelectorAll('.tour-hi').forEach(e=>e.classList.remove('tour-hi'));
+  $('#tourpop').classList.remove('on'); tourI = -1;
+  try { localStorage.setItem('habitat-tour-done','1'); } catch(e){}
+}
+$('#tNext').onclick = () => tourShow(tourI+1);
+$('#tBack').onclick = () => tourShow(tourI-1);
+$('#tSkip').onclick = tourEnd;
+$('#btnHelp').onclick = () => tourShow(0);
+document.addEventListener('keydown', e => { if (tourI>=0 && e.key==='Escape') tourEnd(); });
+window.addEventListener('resize', () => { if (tourI>=0) tourShow(tourI); });
+ 
+/* ===================== INIT ===================== */
+G = geometry(S); S.cells = new Array(G.W*G.H).fill(null);
+syncInputs(); buildGrid(); loadExample(false); history = [];
+renderSaved();
+let tourDone = false; try { tourDone = localStorage.getItem('habitat-tour-done') === '1'; } catch(e){}
+if (!tourDone) setTimeout(() => tourShow(0), 500);
+</script>
+</body>
+</html>
+ 
