@@ -1,7 +1,7 @@
 Claude
 
 
-Habitat layout creator · HTML
+Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -150,6 +150,10 @@ details p,details li{font-size:12px;color:#c3cad9}
 .v3bar>*{pointer-events:auto}
 .v3bar .seg button{padding:4px 9px;font-size:12px}
 .v3hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:11px;color:var(--muted);pointer-events:none}
+.decktabs{margin-bottom:10px;max-width:460px}
+.decktabs button{font-size:12px;padding:6px 10px}
+.c.ladder{background:repeating-linear-gradient(0deg,#f5d547 0 3px,#8a7414 3px 5px)!important}
+.c.ladder .tx{color:#111;text-shadow:0 0 2px #f5d547;font-size:11px;font-weight:800}
 .pill{padding:4px 10px;border-radius:999px;font-weight:700;font-size:13px;background:var(--panel2);border:1px solid var(--line)}
 </style>
 </head>
@@ -163,6 +167,8 @@ details p,details li{font-size:12px;color:#c3cad9}
   <span class="pill" id="hdrScore">—</span>
   <button id="btnExGood">Load good example</button>
   <button id="btnExBad">Load flawed example</button>
+  <button id="btnEx2">Load 2-deck good example</button>
+  <button id="btnEx2Bad">Load 2-deck flawed example</button>
   <button id="btnFix" class="fix" title="Let the tool improve the layout step by step">✨ Auto-fix</button>
   <button id="btnUndo" title="Ctrl+Z">↶ Undo</button>
   <button id="btnClear">Clear</button>
@@ -192,6 +198,8 @@ details p,details li{font-size:12px;color:#c3cad9}
       </div>
       <label class="f" for="inH">Deck height (m)</label>
       <input type="number" id="inH" min="1.8" max="5" step="0.1" value="2.5">
+      <label class="f" for="inDecks">Decks (floors)</label>
+      <select id="inDecks"><option value="1">1 deck</option><option value="2">2 decks</option><option value="3">3 decks</option></select>
       <label class="f" for="inStruct">Structure (for cost)</label>
       <select id="inStruct"><option value="rigid">Rigid module (ISS-style)</option><option value="inflatable">Inflatable (B330-style)</option></select>
     </div>
@@ -201,7 +209,7 @@ details p,details li{font-size:12px;color:#c3cad9}
       <div class="tools" id="tools"></div>
       <label class="f">Brush size</label>
       <div class="seg" id="brush"><button data-b="1" class="on">1×1</button><button data-b="2">2×2</button><button data-b="3">3×3</button></div>
-      <div class="status" style="margin-top:8px">Drag to paint · right-click to erase · hatches go on the outer wall</div>
+      <div class="status" style="margin-top:8px" id="toolHint">Drag to paint · right-click to erase · hatches go on the outer wall</div>
     </div>
  
     <div class="card">
@@ -217,6 +225,7 @@ details p,details li{font-size:12px;color:#c3cad9}
           <li>Hygiene must be kept apart from food prep (NASA-STD-3001 V2 8001) and away from crew quarters (NASA HRP 2014).</li>
           <li>Serious safety problems cap the total score: no exit 30, no sleep quarters 40, trapped crew 45, hearing hazard or under half the volume 50, under half the sleep space 60, missing second exit 65.</li>
           <li>Sleep noise limit tightens from NC-50 (≈58 dBA) to NC-40 (≈49 dBA) for missions over 30 days.</li>
+          <li><b>Decks:</b> sound through a solid deck floor counts as 15 m of distance (≈ −24 dBA, an estimate), but through a ladder opening only the deck height. Each deck needs its own way out: a hatch, or a ladder to a deck that has a hatch (2 independent ways for &gt;4 crew or &gt;90 days, a design rule). Climbing one deck counts as the deck height in escape distance. In the dome, upper decks are smaller because the dome curves inward.</li>
         </ul>
         <p><b>Noise limits are from NASA-STD-3001 Vol. 2:</b> sleep NC-40 for &gt;30-day missions (V2 6079), work areas NC-50 (V2 6078), hazard &lt;85 dBA anywhere (V2 6077). NC→dBA conversions (NC-40 ≈ 49, NC-50 ≈ 58 dBA) are from NASA's Shuttle acoustics paper. Medical uses the NC-50 work-area limit. The loudness of each zone (exercise 65 dBA etc.) is an estimate.</p>
         <p>Each rule above shows its source: blue links are NASA documents, gold tags are estimates or design rules. Tune them in <code>getRules()</code> and <code>NASA_VOL</code>.</p>
@@ -238,6 +247,7 @@ details p,details li{font-size:12px;color:#c3cad9}
           <button data-o="3d">🧊 3D view</button>
         </div>
       </div>
+      <div class="seg decktabs" id="deckTabs" style="display:none"></div>
       <div class="gridwrap" id="gridwrap"><div class="grid" id="grid"></div></div>
       <div class="view3d" id="view3d" style="display:none">
         <canvas id="c3d"></canvas>
@@ -246,6 +256,7 @@ details p,details li{font-size:12px;color:#c3cad9}
           <button class="small" id="v3spin">⏸ Stop rotating</button>
           <button class="small" id="v3reset">⟲ Reset view</button>
           <button class="small" id="v3labels">Labels: on</button>
+          <button class="small" id="v3spread" style="display:none">Decks: spread apart</button>
         </div>
         <div class="v3hint">Drag to rotate · scroll or pinch to zoom · switch back to <b>Zones</b> above to paint</div>
       </div>
@@ -442,8 +453,9 @@ function getRules(crew, days, height){
 }
  
 /* ===================== STATE ===================== */
-let S = {crew:6, days:180, shape:'rect', a:12, b:8, height:2.5, structure:'rigid', cells:[]};
-let G = null;           // geometry: {W,H,mask,heights}
+let S = {crew:6, days:180, shape:'rect', a:12, b:8, height:2.5, structure:'rigid', decks:1, cells:[]};
+let G = null;           // geometry: {W,H,D,N,mask,heights}
+let curDeck = 0;        // deck shown in the 2D editor
 let A = null;           // last analysis
 let tool = 'sleep', brush = 1, overlay = 'none';
 let history = [];
@@ -458,87 +470,149 @@ const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const pct = v => Math.round(v*100) + '%';
  
 /* ===================== GEOMETRY ===================== */
+// The habitat can have 1–3 decks (floors). Every deck uses the same W×H grid; cells are stored in one flat
+// array: index = deck*N + y*W + x  (N = W*H). In the dome, upper decks are smaller because the dome curves in.
+const DECK_FLOOR_ACOUSTIC = 15;   // sound through a solid deck floor counts as 15 m of distance (≈ −24 dB): estimate
+const LADDER_COLOR = '#f5d547';
 function geometry(st){
-  const {shape} = st; const a = st.a, b = st.b, h0 = st.height;
-  const W = shape === 'rect' ? a : a, H = shape === 'rect' ? b : a;
+  const {shape} = st; const a = st.a, b = st.b, h0 = st.height, D = clamp(Math.round(st.decks||1), 1, 3);
+  const W = a, H = shape === 'rect' ? b : a, N = W*H;
   const mask = [], heights = [];
   const R = a/2, r2 = b/2;
-  for (let y=0; y<H; y++) for (let x=0; x<W; x++){
-    const dx = x + .5 - W/2, dy = y + .5 - H/2, r = Math.hypot(dx, dy);
-    let inside = true, h = h0;
-    if (shape === 'cylinder') inside = r <= R;
-    else if (shape === 'dome'){ inside = r <= R; h = Math.min(h0, Math.sqrt(Math.max(0, R*R - r*r))); }
-    else if (shape === 'ring') inside = r <= R && r >= r2;
-    else if (shape === 'lshape') inside = x < b || y >= H - b;
-    mask.push(inside); heights.push(inside ? h : 0);
+  for (let d=0; d<D; d++){
+    const z0 = d*h0;
+    for (let y=0; y<H; y++) for (let x=0; x<W; x++){
+      const dx = x + .5 - W/2, dy = y + .5 - H/2, r = Math.hypot(dx, dy);
+      let inside = true, h = h0;
+      if (shape === 'cylinder') inside = r <= R;
+      else if (shape === 'dome'){ h = Math.min(h0, Math.sqrt(Math.max(0, R*R - r*r)) - z0); inside = r <= R && (d === 0 || h >= 1.2); }
+      else if (shape === 'ring') inside = r <= R && r >= r2;
+      else if (shape === 'lshape') inside = x < b || y >= H - b;
+      mask.push(inside); heights.push(inside ? Math.max(0, h) : 0);
+    }
   }
-  return {W, H, mask, heights};
+  return {W, H, D, N, mask, heights};
 }
+const ix = i => (i % G.N) % G.W, iy = i => ((i % G.N) / G.W) | 0, idk = i => (i / G.N) | 0;
+const isZone = v => !!(v && ZONES[v]);
 function isBoundary(i, g=G){
   if (!g.mask[i]) return false;
-  const x = i % g.W, y = (i / g.W) | 0;
+  const N = g.W*g.H, d = (i/N)|0, l = i % N, x = l % g.W, y = (l / g.W) | 0;
   for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
     const nx = x+dx, ny = y+dy;
-    if (nx<0 || ny<0 || nx>=g.W || ny>=g.H || !g.mask[ny*g.W+nx]) return true;
+    if (nx<0 || ny<0 || nx>=g.W || ny>=g.H || !g.mask[d*N + ny*g.W + nx]) return true;
   }
   return false;
 }
+// a ladder cell is linked to the ladder cell directly above and/or below it
+function ladderLinks(i, cells=S.cells, g=G){
+  const N = g.W*g.H, d = (i/N)|0, r = [];
+  if (cells[i] !== 'ladder') return r;
+  if (d > 0 && g.mask[i-N] && cells[i-N] === 'ladder') r.push(i-N);
+  if (d < g.D-1 && g.mask[i+N] && cells[i+N] === 'ladder') r.push(i+N);
+  return r;
+}
+function cleanupLadders(){ // a ladder with nothing above or below it is removed
+  let ch = true;
+  while (ch){ ch = false; for (let i=0;i<S.cells.length;i++) if (S.cells[i]==='ladder' && !ladderLinks(i).length){ S.cells[i] = null; ch = true; } }
+}
 function applyGeometry(old){
   G = geometry(S);
-  const cells = new Array(G.W*G.H).fill(null);
+  const cells = new Array(G.D*G.N).fill(null);
   if (old){
-    for (let y=0; y<Math.min(old.H, G.H); y++) for (let x=0; x<Math.min(old.W, G.W); x++){
-      const v = old.cells[y*old.W + x], i = y*G.W + x;
-      if (v && G.mask[i]) cells[i] = v;
-    }
+    const oN = old.W*old.H, oD = Math.max(1, Math.round(old.cells.length/oN));
+    for (let d=0; d<Math.min(oD, G.D); d++)
+      for (let y=0; y<Math.min(old.H, G.H); y++) for (let x=0; x<Math.min(old.W, G.W); x++){
+        const v = old.cells[d*oN + y*old.W + x], i = d*G.N + y*G.W + x;
+        if (v && G.mask[i]) cells[i] = v;
+      }
   }
   S.cells = cells;
   for (let i=0; i<cells.length; i++) if (cells[i] === 'exit' && !isBoundary(i)) cells[i] = null;
+  cleanupLadders();
 }
  
 /* ===================== ANALYSIS ===================== */
-function dijkstra(src, stepCost){
-  const {W,H,mask} = G, n = W*H, d = new Float64Array(n).fill(Infinity), heap = [];
-  const push = (c,i) => { heap.push([c,i]); let k = heap.length-1;
-    while (k>0){ const p=(k-1)>>1; if (heap[p][0] <= heap[k][0]) break; [heap[p],heap[k]]=[heap[k],heap[p]]; k=p; } };
-  const pop = () => { const top = heap[0], last = heap.pop();
-    if (heap.length){ heap[0]=last; let k=0;
-      for(;;){ const l=2*k+1, r=l+1; let m=k;
-        if (l<heap.length && heap[l][0]<heap[m][0]) m=l;
-        if (r<heap.length && heap[r][0]<heap[m][0]) m=r;
-        if (m===k) break; [heap[m],heap[k]]=[heap[k],heap[m]]; k=m; } }
-    return top; };
-  src.forEach(i => { d[i]=0; push(0,i); });
-  while (heap.length){
-    const [c,i] = pop(); if (c > d[i]) continue;
-    const x = i%W, y = (i/W)|0;
+function makeHeap(){
+  const heap = [];
+  return {
+    size: () => heap.length,
+    push(c,i){ heap.push([c,i]); let k = heap.length-1;
+      while (k>0){ const p=(k-1)>>1; if (heap[p][0] <= heap[k][0]) break; [heap[p],heap[k]]=[heap[k],heap[p]]; k=p; } },
+    pop(){ const top = heap[0], last = heap.pop();
+      if (heap.length){ heap[0]=last; let k=0;
+        for(;;){ const l=2*k+1, r=l+1; let m=k;
+          if (l<heap.length && heap[l][0]<heap[m][0]) m=l;
+          if (r<heap.length && heap[r][0]<heap[m][0]) m=r;
+          if (m===k) break; [heap[m],heap[k]]=[heap[k],heap[m]]; k=m; } }
+      return top; },
+  };
+}
+// "Acoustic distance" from a set of noise sources: 8 directions on a deck (storage racks count as 2.5 m),
+// plus up/down through the deck floor (DECK_FLOOR_ACOUSTIC) or, much louder, through a ladder opening (deck height).
+function noiseDist(src){
+  const {W,H,D,N,mask} = G, cells = S.cells, n = D*N, d = new Float64Array(n).fill(Infinity), hp = makeHeap();
+  src.forEach(i => { d[i]=0; hp.push(0,i); });
+  while (hp.size()){
+    const [c,i] = hp.pop(); if (c > d[i]) continue;
+    const dk = (i/N)|0, l = i - dk*N, x = l%W, y = (l/W)|0, base = dk*N;
     for (let dy=-1; dy<=1; dy++) for (let dx=-1; dx<=1; dx++){
       if (!dx && !dy) continue;
       const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue;
-      const j = ny*W+nx; if (!mask[j]) continue;
-      if (dx && dy && (!mask[y*W+nx] || !mask[ny*W+x])) continue;
-      const nc = c + (dx&&dy ? 1.414 : 1) * stepCost(j);
-      if (nc < d[j]){ d[j]=nc; push(nc,j); }
+      const j = base + ny*W+nx; if (!mask[j]) continue;
+      if (dx && dy && (!mask[base + y*W+nx] || !mask[base + ny*W+x])) continue;
+      const nc = c + (dx&&dy ? 1.414 : 1) * (cells[j]==='storage' ? STORAGE_ACOUSTIC : 1);
+      if (nc < d[j]){ d[j]=nc; hp.push(nc,j); }
+    }
+    for (const dd of [-1,1]){
+      const nd = dk+dd; if (nd<0 || nd>=D) continue;
+      const j = i + dd*N; if (!mask[j]) continue;
+      const nc = c + ((cells[i]==='ladder' && cells[j]==='ladder') ? S.height : DECK_FLOOR_ACOUSTIC);
+      if (nc < d[j]){ d[j]=nc; hp.push(nc,j); }
     }
   }
   return d;
 }
+// Walking distance to the nearest hatch: 4 directions on a deck (1 m per cell), plus climbing a ladder
+// (counts as the deck height in metres). Storage racks can't be walked through.
+function egressSearch(srcs, walk){
+  const {W,H,D,N} = G, n = D*N, dist = new Float64Array(n).fill(Infinity), parent = new Int32Array(n).fill(-1), hp = makeHeap();
+  srcs.forEach(i => { dist[i]=0; hp.push(0,i); });
+  while (hp.size()){
+    const [c,i] = hp.pop(); if (c > dist[i]) continue;
+    const dk = (i/N)|0, l = i - dk*N, x = l%W, y = (l/W)|0;
+    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue;
+      const j = dk*N + ny*W+nx; if (!walk(j)) continue;
+      if (c+1 < dist[j]){ dist[j]=c+1; parent[j]=i; hp.push(c+1,j); }
+    }
+    for (const j of ladderLinks(i)){ if (!walk(j)) continue;
+      const nc = c + S.height; if (nc < dist[j]){ dist[j]=nc; parent[j]=i; hp.push(nc,j); } }
+  }
+  return {dist, parent};
+}
  
 function analyze(){
-  const {W,H,mask,heights} = G, cells = S.cells, n = W*H;
+  const {W,H,D,N,mask,heights} = G, cells = S.cells, n = D*N;
   const R = getRules(S.crew, S.days, S.height);
   const checks = [];
   const add = (cat,status,title,detail,fix,hl,impact) =>
     checks.push({cat,status,title,detail,fix:fix||null,cells:hl||[],impact:impact||0});
   const idxOf = k => { const r=[]; for (let i=0;i<n;i++) if (mask[i] && cells[i]===k) r.push(i); return r; };
+  const deckName = d => `deck ${d+1}`;
+  const nb4 = i => { const dk=(i/N)|0, l=i-dk*N, x=l%W, y=(l/W)|0, r=[];
+    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue; const j=dk*N+ny*W+nx; if (mask[j]) r.push(j); }
+    return r; };
  
-  // ---- counts & volume
+  // ---- counts & volume (all decks)
   const count = {}; ZK.forEach(k => count[k]=0);
-  let interior=0, open=0, nhv=0, totalVol=0; const exits=[], openCells=[];
+  let interior=0, open=0, nhv=0, totalVol=0; const exits=[], openCells=[], ladderCells=[];
   for (let i=0;i<n;i++){
     if (!mask[i]) continue; interior++; totalVol += heights[i];
     const v = cells[i];
-    if (v==='exit') exits.push(i); else if (v) count[v]++; else { open++; openCells.push(i); }
+    if (v==='exit') exits.push(i);
+    else if (v==='ladder'){ ladderCells.push(i); open++; }
+    else if (v) count[v]++; else { open++; openCells.push(i); }
     if (v !== 'storage') nhv += heights[i];
   }
   const target = R.volPerCrew * S.crew, ratio = nhv / target;
@@ -547,7 +621,8 @@ function analyze(){
   if (ratio >= 1) add('volume','pass',`${fmt(nhv/S.crew)} m³ habitable volume per person`,`Needs at least ${R.volPerCrew} m³ per person (${volSrcTxt}).`);
   else add('volume', ratio>=.75?'warn':'fail', `Only ${fmt(nhv/S.crew)} m³ per person`,
     `A ${S.days}-day mission needs at least ${R.volPerCrew} m³ per person (${volSrcTxt}), so ${fmt(target,0)} m³ in total. You have ${fmt(nhv,0)} m³. Storage does not count as living volume.`,
-    `Enlarge the habitat by about ${Math.ceil((target-nhv)/S.height)} m² of floor, reduce the crew, or move storage out of the living area.`, [], WEIGHTS.volume*(1-volScore));
+    D>1 ? `Enlarge the habitat by about ${Math.ceil((target-nhv)/S.height)} m² of floor, add a deck, reduce the crew, or move storage out of the living area.`
+        : `Enlarge the habitat by about ${Math.ceil((target-nhv)/S.height)} m² of floor, reduce the crew, or move storage out of the living area.`, [], WEIGHTS.volume*(1-volScore));
  
   // ---- zone sizes
   const reqKeys = ZK.filter(k => R.zones[k] > 0);
@@ -563,15 +638,13 @@ function analyze(){
       `Paint ${req-have} more m² of ${nm.toLowerCase()}.`, zc, WEIGHTS.zones*(1-s)/reqKeys.length);
   }
   let zoneScore = reqKeys.length ? zsum/reqKeys.length : 1;
-  // fragmentation: zones should be compact, connected areas (equipment and people not scattered)
+  // fragmentation: zones should be compact, connected areas (pieces on different decks count separately)
   let extraPieces = 0;
   for (const k of ['sleep','exercise','hygiene','food','work','medical']){
     const seen = new Set(), comps = [];
     for (let i=0;i<n;i++){ if (!mask[i] || cells[i]!==k || seen.has(i)) continue;
       const comp=[i]; seen.add(i);
-      for (let h=0; h<comp.length; h++){ const c=comp[h], x=c%W, y=(c/W)|0;
-        for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue;
-          const j=ny*W+nx; if (mask[j] && cells[j]===k && !seen.has(j)){ seen.add(j); comp.push(j); } } }
+      for (let h=0; h<comp.length; h++) for (const j of nb4(comp[h])) if (cells[j]===k && !seen.has(j)){ seen.add(j); comp.push(j); }
       comps.push(comp); }
     if (comps.length < 2) continue;
     comps.sort((a,b)=>b.length-a.length);
@@ -588,18 +661,18 @@ function analyze(){
   }
   zoneScore *= Math.max(.5, 1 - .06*extraPieces);
   const low = [];
-  for (let i=0;i<n;i++) if (mask[i] && cells[i] && cells[i]!=='storage' && cells[i]!=='exit' && heights[i] < MIN_CEILING) low.push(i);
+  for (let i=0;i<n;i++) if (mask[i] && isZone(cells[i]) && cells[i]!=='storage' && heights[i] < MIN_CEILING) low.push(i);
   if (low.length) add('zones','warn',`${low.length} m² of crew zones under a low ceiling`,
     `Near the curved wall the ceiling is below ${MIN_CEILING} m. Crew can't stand there.`,
     'Move those zones toward the centre and use the low edge for storage.', low, 2);
  
-  // ---- adjacency
+  // ---- adjacency (walls shared on the same deck)
   const pairs = {};
-  for (let y=0;y<H;y++) for (let x=0;x<W;x++){
-    const i=y*W+x, v=cells[i]; if (!mask[i] || !v || v==='exit') continue;
+  for (let d=0; d<D; d++) for (let y=0;y<H;y++) for (let x=0;x<W;x++){
+    const i=d*N+y*W+x, v=cells[i]; if (!mask[i] || !isZone(v)) continue;
     for (const [dx,dy] of [[1,0],[0,1]]){
       const nx=x+dx, ny=y+dy; if (nx>=W || ny>=H) continue;
-      const j=ny*W+nx, w=cells[j]; if (!mask[j] || !w || w==='exit' || w===v) continue;
+      const j=d*N+ny*W+nx, w=cells[j]; if (!mask[j] || !isZone(w) || w===v) continue;
       const key=[v,w].sort().join('|'); const p = pairs[key] || (pairs[key]={edges:0,cells:new Set()});
       p.edges++; p.cells.add(i); p.cells.add(j);
     }
@@ -610,7 +683,8 @@ function analyze(){
     const w = c.sev==='high' ? .35 : .15; pen += w;
     add('adjacency', c.sev==='high'?'fail':'warn', `${ZONES[c.a].name} touches ${ZONES[c.b].name}`,
       `${c.why[0].toUpperCase()+c.why.slice(1)} (${p.edges} m of shared wall).`,
-      `Separate ${ZONES[c.a].name.toLowerCase()} and ${ZONES[c.b].name.toLowerCase()} with a corridor, storage or a neutral zone.`, [...p.cells], WEIGHTS.adjacency*w);
+      D>1 ? `Separate ${ZONES[c.a].name.toLowerCase()} and ${ZONES[c.b].name.toLowerCase()} with a corridor or storage, or put them on different decks.`
+          : `Separate ${ZONES[c.a].name.toLowerCase()} and ${ZONES[c.b].name.toLowerCase()} with a corridor, storage or a neutral zone.`, [...p.cells], WEIGHTS.adjacency*w);
   }
   if (!pen) add('adjacency','pass','No conflicting neighbours','No noisy or dirty zone shares a wall with a quiet or clean one.');
   for (const s of SYNERGIES){
@@ -619,9 +693,9 @@ function analyze(){
   }
   const adjScore = Math.max(0, 1-pen);
  
-  // ---- noise
+  // ---- noise (spreads across a deck, and up/down through floors and ladder openings)
   const srcDist = {};
-  for (const k of ZK) if (ZONES[k].noise){ const src = idxOf(k); if (src.length) srcDist[k] = dijkstra(src, j => cells[j]==='storage' ? STORAGE_ACOUSTIC : 1); }
+  for (const k of ZK) if (ZONES[k].noise){ const src = idxOf(k); if (src.length) srcDist[k] = noiseDist(src); }
   const noiseMap = new Float32Array(n), dom = new Array(n).fill(null);
   for (let i=0;i<n;i++){
     if (!mask[i]) continue;
@@ -649,7 +723,8 @@ function analyze(){
       const src = dom[worst] ? ZONES[dom[worst]].name.toLowerCase() : 'nearby zones';
       add('noise', maxL-lim > 6 ? 'fail' : 'warn', `${nm} too noisy: ${fmt(maxL,0)} dBA`,
         `${bad.length} m² is above the limit (${std}). The loudest source is ${src}.`,
-        `Move ${src} further from ${nm.toLowerCase()} or put storage between them, because racks absorb sound.`,
+        D>1 ? `Move ${src} further from ${nm.toLowerCase()}, put storage between them, or put them on different decks (a deck floor blocks most sound, but ladder openings let it through).`
+            : `Move ${src} further from ${nm.toLowerCase()} or put storage between them, because racks absorb sound.`,
         bad, WEIGHTS.noise*(zc.length - sub)/Math.max(1,qTotal));
     }
   }
@@ -660,23 +735,30 @@ function analyze(){
   } else add('noise','pass',`No hearing hazard (everywhere below ${R.noiseHazard} dBA)`,'NASA-STD-3001 V2 6077 hazard limit is met.');
   if (!qTotal) add('noise','fail','Noise cannot be assessed','No sleep, medical or work zone has been placed yet.','Place the sleep quarters first.',[],WEIGHTS.noise);
  
-  // ---- egress
+  // ---- egress (walk on each deck, climb ladders between decks)
   const walk = i => mask[i] && cells[i] !== 'storage';
-  const dist = new Int32Array(n).fill(-1), parent = new Int32Array(n).fill(-1);
-  const q = [...exits]; exits.forEach(i => dist[i]=0);
-  for (let h=0; h<q.length; h++){
-    const i=q[h], x=i%W, y=(i/W)|0;
-    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-      const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue;
-      const j=ny*W+nx; if (!walk(j) || dist[j]>=0) continue;
-      dist[j]=dist[i]+1; parent[j]=i; q.push(j);
-    }
-  }
+  const eg = egressSearch(exits, walk);
+  const dist = new Float64Array(n); for (let i=0;i<n;i++) dist[i] = isFinite(eg.dist[i]) ? eg.dist[i] : -1;
+  const parent = eg.parent;
   const walkable = []; for (let i=0;i<n;i++) if (walk(i) && cells[i]!=='exit') walkable.push(i);
   const unreachable = walkable.filter(i => dist[i] < 0);
   const tooFar = walkable.filter(i => dist[i] > R.maxEgress);
   let worstCell = -1; walkable.forEach(i => { if (dist[i]>=0 && (worstCell<0 || dist[i]>dist[worstCell])) worstCell=i; });
   const worstPath = []; if (worstCell>=0){ let c=worstCell; while (c>=0){ worstPath.push(c); c=parent[c]; } }
+  // ways out of each deck: its own hatches + ladders that lead to a hatch without coming back to this deck
+  const deckWays = [];
+  for (let d=0; d<D; d++){
+    let deckInterior = 0; for (let l=0;l<N;l++) if (mask[d*N+l]) deckInterior++;
+    const hatches = exits.filter(i => idk(i)===d), ladders = ladderCells.filter(i => idk(i)===d);
+    let ladderWays = 0;
+    if (D>1 && ladders.length){
+      const other = egressSearch(exits.filter(i => idk(i)!==d), j => walk(j) && idk(j)!==d).dist;
+      ladderWays = ladders.filter(i => ladderLinks(i).some(j => isFinite(other[j]))).length;
+    }
+    deckWays.push({d, interior:deckInterior, hatches:hatches.length, ladders:ladderWays, ways:hatches.length + ladderWays, cells:[...hatches, ...ladders]});
+  }
+  const shortDecks = D===1 ? (exits.length < R.exitsRequired ? [0] : []) : deckWays.filter(w => w.interior && w.ways < R.exitsRequired).map(w=>w.d);
+  const exitsShort = exits.length > 0 && shortDecks.length > 0;
   let egScore = 0; let blockedRackSet = new Set();
   if (!exits.length){
     add('egress','fail','No emergency exit','Every habitat needs at least one hatch to an airlock or safe haven.','Pick the Hatch tool and click a cell on the outer wall.',[],WEIGHTS.egress);
@@ -684,26 +766,35 @@ function analyze(){
     const W1 = walkable.length || 1;
     const reach = 1 - unreachable.length/W1, within = 1 - (tooFar.length+unreachable.length)/W1;
     egScore = .5*reach + .5*within;
-    if (exits.length < R.exitsRequired){ egScore *= .6;
-      add('egress','fail',`${exits.length} of ${R.exitsRequired} required exits`,'Design rule (NASA sets no exit count): with more than 4 crew or more than 90 days, a second exit means one fire or leak cannot trap everyone.','Add a second hatch on the opposite side of the habitat.',exits,WEIGHTS.egress*.4);
-    } else add('egress','pass',`${exits.length} exit${exits.length>1?'s':''} (needs ${R.exitsRequired})`,'Enough hatches for this crew and mission.',null,exits);
-    if (unreachable.length) add('egress','fail',`Trapped area: ${unreachable.length} m² has no way to reach any exit`,'Storage racks or walls block every path from these cells to a hatch, so crew there could not escape. NASA-STD-3001 (V2 8014) requires escape routes free of stowed items.','Open a 1 m gap in the storage, or add a hatch next to the cut-off area.',unreachable,WEIGHTS.egress*.5*unreachable.length/W1+3);
+    if (D===1){
+      if (exits.length < R.exitsRequired){ egScore *= .6;
+        add('egress','fail',`${exits.length} of ${R.exitsRequired} required exits`,'Design rule (NASA sets no exit count): with more than 4 crew or more than 90 days, a second exit means one fire or leak cannot trap everyone.','Add a second hatch on the opposite side of the habitat.',exits,WEIGHTS.egress*.4);
+      } else add('egress','pass',`${exits.length} exit${exits.length>1?'s':''} (needs ${R.exitsRequired})`,'Enough hatches for this crew and mission.',null,exits);
+    } else {
+      if (shortDecks.length) egScore *= .6;
+      for (const w of deckWays){ if (!w.interior) continue;
+        const parts = `${w.hatches} hatch${w.hatches===1?'':'es'} + ${w.ladders} ladder${w.ladders===1?'':'s'} to a deck with a hatch`;
+        if (w.ways < R.exitsRequired)
+          add('egress','fail',`Deck ${w.d+1} has ${w.ways ? 'only '+w.ways : 'no'} way${w.ways===1?'':'s'} out (needs ${R.exitsRequired})`,
+            `${parts}. Each deck needs its own way out: a hatch, or a ladder to a deck that has a hatch.${R.exitsRequired>1?' With more than 4 crew or more than 90 days it needs 2 independent ways out (design rule), so one fire or leak cannot trap anyone.':''}`,
+            `Add a hatch on deck ${w.d+1}'s outer wall, or another ladder to a deck with a hatch.`, w.cells, WEIGHTS.egress*.4/Math.max(1,shortDecks.length));
+        else add('egress','pass',`Deck ${w.d+1}: ${w.ways} way${w.ways===1?'':'s'} out`,`${parts}.`,null,w.cells);
+      }
+    }
+    if (unreachable.length) add('egress','fail',`Trapped area: ${unreachable.length} m² has no way to reach any exit`,
+      D>1 ? 'Storage racks, walls or a missing ladder block every path from these cells to a hatch, so crew there could not escape. NASA-STD-3001 (V2 8014) requires escape routes free of stowed items.'
+          : 'Storage racks or walls block every path from these cells to a hatch, so crew there could not escape. NASA-STD-3001 (V2 8014) requires escape routes free of stowed items.',
+      D>1 ? 'Open a gap in the storage, add a hatch, or add a ladder to a deck with a hatch.' : 'Open a 1 m gap in the storage, or add a hatch next to the cut-off area.',unreachable,WEIGHTS.egress*.5*unreachable.length/W1+3);
     if (worstCell>=0){
-      const md = dist[worstCell];
-      if (md > R.maxEgress) add('egress', md>R.maxEgress*1.4?'fail':'warn', `Longest escape route ${md} m (limit ${R.maxEgress} m)`,`${tooFar.length} m² is too far from a hatch.`,'Add a hatch closer to the far end, or straighten the corridor.',tooFar,WEIGHTS.egress*.5*tooFar.length/W1+2);
-      else add('egress','pass',`Every point is within ${md} m of an exit`,`Design limit for ${S.crew} crew is ${R.maxEgress} m (NASA sets no distance). The outlined route is the longest.`,null,worstPath);
+      const md = Math.round(dist[worstCell]);
+      const climb = D>1 && worstPath.some((c,k) => k && idk(c)!==idk(worstPath[k-1])) ? ', including climbing' : '';
+      if (dist[worstCell] > R.maxEgress) add('egress', dist[worstCell]>R.maxEgress*1.4?'fail':'warn', `Longest escape route ${md} m${climb} (limit ${R.maxEgress} m)`,`${tooFar.length} m² is too far from a hatch.`,D>1?'Add a hatch or a ladder closer to the far end, or straighten the corridor.':'Add a hatch closer to the far end, or straighten the corridor.',tooFar,WEIGHTS.egress*.5*tooFar.length/W1+2);
+      else add('egress','pass',`Every point is within ${md} m of an exit${climb}`,`Design limit for ${S.crew} crew is ${R.maxEgress} m (NASA sets no distance)${D>1?'; climbing one deck counts as the deck height':''}. The outlined route is the longest.`,null,worstPath);
     }
     // storage access: every rack needs at least one open side that crew can reach from an exit
     const storageCells = idxOf('storage');
     if (storageCells.length){
-      const blockedRacks = storageCells.filter(i => {
-        const x=i%W, y=(i/W)|0;
-        for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-          const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue;
-          const j=ny*W+nx; if (walk(j) && dist[j]>=0) return false;
-        }
-        return true;
-      });
+      const blockedRacks = storageCells.filter(i => !nb4(i).some(j => walk(j) && dist[j]>=0));
       blockedRackSet = new Set(blockedRacks);
       if (blockedRacks.length){
         const frac = blockedRacks.length/storageCells.length;
@@ -713,13 +804,15 @@ function analyze(){
           'Add a walkway beside those racks so each one has at least one open side the crew can stand at.', blockedRacks, WEIGHTS.egress*.5*frac+2);
       } else add('egress','pass','All storage is reachable','Every rack has an open side the crew can walk up to.',null,storageCells);
     }
-    if (exits.length >= 2){
+    // two hatches on the same deck should be far apart
+    for (let d=0; d<D; d++){
+      const hs = exits.filter(i => idk(i)===d); if (hs.length < 2) continue;
       let far = 0;
-      for (const p of exits) for (const r of exits) far = Math.max(far, Math.hypot(p%W - r%W, ((p/W)|0) - ((r/W)|0)));
-      const need = .4*Math.max(W,H);
+      for (const p of hs) for (const r of hs) far = Math.max(far, Math.hypot(ix(p) - ix(r), iy(p) - iy(r)));
+      const need = .4*Math.max(W,H), on = D>1 ? ` on deck ${d+1}` : '';
       if (far < need){ egScore *= .85;
-        add('egress','warn','Exits are too close together',`They are only ${fmt(far,0)} m apart. One fire or leak could block both.`,'Move one hatch to the opposite side of the habitat.',exits,WEIGHTS.egress*.15);
-      } else add('egress','pass','Exits are well separated',`${fmt(far,0)} m apart, so one hazard can't block both.`,null,exits);
+        add('egress','warn',`Exits${on} are too close together`,`They are only ${fmt(far,0)} m apart. One fire or leak could block both.`,'Move one hatch to the opposite side of the habitat.',hs,WEIGHTS.egress*.15);
+      } else add('egress','pass',`Exits${on} are well separated`,`${fmt(far,0)} m apart, so one hazard can't block both.`,null,hs);
     }
   }
  
@@ -729,13 +822,13 @@ function analyze(){
   if (circ < .15) add('efficiency','warn',`Only ${pct(circ)} free floor`,'Too little circulation space. The crew will have to squeeze past equipment.','Leave 15–40% of the floor open as corridors and circulation.',[],WEIGHTS.efficiency*(1-eff));
   else if (circ > .40){
     const spare = (open - .30*interior) * S.height, c = costOf(spare, S.structure);
-    add('efficiency','warn',`${pct(circ)} of the floor is unassigned`,`About ${fmt(spare,0)} m³ more empty space than a comfortable 30% circulation. That's roughly ${tonnes(c.kg)} of structure and ${money(c.usd)} of launch cost.`,'Assign that space to zones, or choose a smaller habitat.',openCells,WEIGHTS.efficiency*(1-eff));
+    add('efficiency','warn',`${pct(circ)} of the floor is unassigned`,`About ${fmt(spare,0)} m³ more empty space than a comfortable 30% circulation. That's roughly ${tonnes(c.kg)} of structure and ${money(c.usd)} of launch cost.`,D>1?'Assign that space to zones, or use fewer decks or a smaller habitat.':'Assign that space to zones, or choose a smaller habitat.',openCells,WEIGHTS.efficiency*(1-eff));
   }
   else add('efficiency','pass',`${pct(circ)} circulation space`,'A healthy balance between zones and corridors (15–40%).');
   if (ratio > 2.5){
     const f = Math.max(.5, 1-(ratio-2.5)*.3); eff *= f;
     const extra = nhv - target*1.5, c = costOf(extra, S.structure);
-    add('efficiency','warn','Habitat is oversized',`It has ${pct(ratio)} of the living volume this crew needs. Trimming to 1.5× the need would save about ${fmt(extra,0)} m³, roughly ${tonnes(c.kg)} and ${money(c.usd)} of launch cost.`,'Try a smaller shape, or plan for a bigger crew.',[],WEIGHTS.efficiency*(1-f));
+    add('efficiency','warn','Habitat is oversized',`It has ${pct(ratio)} of the living volume this crew needs. Trimming to 1.5× the need would save about ${fmt(extra,0)} m³, roughly ${tonnes(c.kg)} and ${money(c.usd)} of launch cost.`,D>1?'Try fewer decks or a smaller shape, or plan for a bigger crew.':'Try a smaller shape, or plan for a bigger crew.',[],WEIGHTS.efficiency*(1-f));
   }
  
   const cats = {volume:volScore, zones:zoneScore, adjacency:adjScore, noise:noiseScore, egress:egScore, efficiency:eff};
@@ -745,7 +838,7 @@ function analyze(){
   if (!exits.length) caps.push({cap:30, why:'no emergency exit'});
   else {
     if (unreachable.length) caps.push({cap:45, why:'crew could be trapped with no way out'});
-    if (exits.length < R.exitsRequired) caps.push({cap:65, why:'missing the required second exit'});
+    if (exitsShort) caps.push({cap:65, why: D>1 ? 'a deck is missing its second way out' : 'missing the required second exit'});
   }
   if (hazard.length) caps.push({cap:50, why:'noise at hearing-damage level (≥85 dBA)'});
   if (!count.sleep) caps.push({cap:40, why:'no sleep quarters'});
@@ -758,9 +851,14 @@ function analyze(){
   const grade = total>=90?'A':total>=75?'B':total>=60?'C':total>=40?'D':'F';
   const conflicts = checks.filter(c => c.cat==='adjacency' && c.status!=='pass').length;
   const suggestions = checks.filter(c => c.status!=='pass' && c.fix).sort((a,b)=>b.impact-a.impact);
+  // decks with a problem (shown as ⚠ on the deck tabs)
+  const deckIssue = Array.from({length:D}, (_,d) => shortDecks.includes(d) || unreachable.some(i => idk(i)===d));
+  const shafts = ladderCells.filter(i => ladderLinks(i).some(j => j > i)).length;
   return {R, count, checks, suggestions, cats, total, raw:Math.round(raw), caps, objective, unreachable, grade, noiseMap, dist, worstPath, exits, blockedRackSet,
+    deckWays, deckIssue, exitsShort,
     cost: costOf(totalVol, S.structure),
-    stats:{interior, nhv, totalVol, mass: costOf(totalVol, S.structure).kg, launch: costOf(totalVol, S.structure).usd, perCrew:nhv/S.crew, circ, conflicts, maxEgress: worstCell>=0?dist[worstCell]:null, exits:exits.length}};
+    stats:{interior, nhv, totalVol, mass: costOf(totalVol, S.structure).kg, launch: costOf(totalVol, S.structure).usd, perCrew:nhv/S.crew, circ, conflicts,
+      maxEgress: worstCell>=0?Math.round(dist[worstCell]):null, exits:exits.length, decks:D, ladders:shafts}};
 }
  
 /* ===================== RENDER ===================== */
@@ -772,11 +870,12 @@ function buildGrid(){
   grid.style.setProperty('--cs', cs+'px');
   grid.style.gridTemplateColumns = `repeat(${G.W}, ${cs}px)`;
   grid.innerHTML = ''; cellEls = [];
-  const frag = document.createDocumentFragment();
-  for (let i=0;i<G.W*G.H;i++){
-    const d = document.createElement('div');
-    d.className = 'c' + (G.mask[i] ? '' : ' out') + (G.mask[i] && G.heights[i] < MIN_CEILING ? ' low' : '');
-    d.dataset.i = i;
+  curDeck = clamp(curDeck, 0, G.D-1);
+  const frag = document.createDocumentFragment(), off = curDeck*G.N;
+  for (let i=0;i<G.N;i++){
+    const d = document.createElement('div'), g = off + i;
+    d.className = 'c' + (G.mask[g] ? '' : ' out') + (G.mask[g] && G.heights[g] < MIN_CEILING ? ' low' : '');
+    d.dataset.i = i;   // local index on the current deck
     d.innerHTML = '<div class="ov"></div><span class="tx"></span>';
     frag.appendChild(d); cellEls.push(d);
   }
@@ -791,23 +890,25 @@ function heat(db){ // 35 → 75 dB : green → yellow → red
  
 function renderGrid(){
   const cs = parseInt(getComputedStyle($('#grid')).getPropertyValue('--cs')) || 24;
-  const pathSet = new Set(overlay==='egress' ? A.worstPath : []);
-  for (let i=0;i<cellEls.length;i++){
-    const el = cellEls[i]; if (!G.mask[i]) continue;
+  const pathSet = new Set(overlay==='egress' ? A.worstPath : []), off = curDeck*G.N;
+  for (let li=0;li<cellEls.length;li++){
+    const i = off + li, el = cellEls[li]; if (!G.mask[i]) continue;
     const v = S.cells[i], ov = el.firstChild, tx = el.lastChild;
     el.classList.toggle('exit', v==='exit');
-    el.style.background = v && v!=='exit' ? ZONES[v].color : '';
+    el.classList.toggle('ladder', v==='ladder');
+    el.style.background = isZone(v) ? ZONES[v].color : '';
     el.classList.toggle('path', pathSet.has(i));
     let t = '';
     if (v==='exit') t = 'EX';
-    if (overlay==='noise'){ ov.style.background = heat(A.noiseMap[i]); if (cs>=24 && v!=='exit') t = Math.round(A.noiseMap[i]); }
+    if (v==='ladder'){ const L = ladderLinks(i), up = L.some(j=>j>i), dn = L.some(j=>j<i); t = up && dn ? '⇅' : up ? '▲' : '▼'; }
+    if (overlay==='noise'){ ov.style.background = heat(A.noiseMap[i]); if (cs>=24 && v!=='exit' && v!=='ladder') t = Math.round(A.noiseMap[i]); }
     else if (overlay==='egress'){
       const d = A.dist[i];
       if (v==='storage') ov.style.background = A.blockedRackSet.has(i) ? 'repeating-linear-gradient(45deg,rgba(255,40,60,.9) 0 3px,rgba(0,0,0,.5) 3px 6px)' : 'rgba(0,0,0,.45)';
       else if (d<0) ov.style.background = 'rgba(255,40,60,.85)';
       else if (d>A.R.maxEgress) ov.style.background = 'rgba(255,150,40,.75)';
       else ov.style.background = `rgba(60,170,255,${.15 + .6*d/Math.max(1,A.R.maxEgress)})`;
-      if (cs>=22 && v!=='exit' && v!=='storage') t = d<0 ? '✕' : d;
+      if (cs>=22 && v!=='exit' && v!=='storage' && v!=='ladder') t = d<0 ? '✕' : Math.round(d);
     } else ov.style.background = '';
     tx.textContent = t;
   }
@@ -815,8 +916,22 @@ function renderGrid(){
   const lgMode = overlay==='3d' ? (v3.mode==='zones' ? 'none' : v3.mode) : overlay;
   if (lgMode==='noise') lg.innerHTML = `<span>35 dB</span><div class="bar" style="background:linear-gradient(90deg,${heat(35)},${heat(55)},${heat(75)})"></div><span>75 dB</span><span>· NASA-STD-3001 limits: sleep ${A.R.noiseLimit.sleep} dBA (${A.R.noiseLabel.sleep}), medical/work ${A.R.noiseLimit.work} dBA (NC-50), hazard ${A.R.noiseHazard} dBA · storage absorbs sound</span>`;
   else if (lgMode==='egress') lg.innerHTML = `<span style="color:#5aaaff">■ distance to nearest hatch</span><span style="color:#ff9628">■ too far (&gt;${A.R.maxEgress} m)</span><span style="color:#ff283c">■ trapped (no way to any exit)</span><span style="color:#ff6b7a">▨ storage nobody can reach</span><span>□ outlined: longest escape route</span>`;
-  else lg.innerHTML = ZK.map(k=>`<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:${ZONES[k].color}"></span> ${ZONES[k].name}</span>`).join('') + `<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:#f2f4f8"></span> Hatch</span>` + (G.heights.some((h,i)=>G.mask[i]&&h<MIN_CEILING)?'<span>▨ low ceiling</span>':'');
+  else lg.innerHTML = ZK.map(k=>`<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:${ZONES[k].color}"></span> ${ZONES[k].name}</span>`).join('') + `<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:#f2f4f8"></span> Hatch</span>` +
+    (G.D>1 ? `<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:${LADDER_COLOR}"></span> Ladder (▲ up · ▼ down)</span>` : '') +
+    (G.heights.some((h,i)=>G.mask[i]&&h<MIN_CEILING)?'<span>▨ low ceiling</span>':'');
 }
+ 
+function renderDeckTabs(){
+  const box = $('#deckTabs');
+  if (G.D < 2){ box.style.display = 'none'; return; }
+  box.style.display = '';
+  box.innerHTML = Array.from({length:G.D}, (_,d) => {
+    const warn = A && A.deckIssue && A.deckIssue[d];
+    return `<button data-d="${d}" class="${d===curDeck?'on':''}" title="${warn?'This deck has a problem: see the checks':''}">Deck ${d+1}${d===0?' · ground':d===G.D-1?' · top':''}${warn?' ⚠':''}</button>`;
+  }).join('');
+}
+function setDeck(d){ curDeck = clamp(d, 0, G.D-1); buildGrid(); renderGrid(); renderDeckTabs(); }
+$('#deckTabs').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (b) setDeck(+b.dataset.d); });
  
 function renderTools(){
   const box = $('#tools'); const R = A.R;
@@ -826,11 +941,20 @@ function renderTools(){
     const cls = req ? (have>=req ? 'ok' : 'low') : '';
     return `<button class="tool ${tool===k?'active':''}" data-t="${k}"><span class="sw" style="background:${ZONES[k].color}"></span><span class="nm">${ZONES[k].name}</span><span class="ct ${cls}">${ct}</span><span class="kb">${ZONES[k].key}</span></button>`;
   });
-  items.push(`<button class="tool ${tool==='exit'?'active':''}" data-t="exit"><span class="sw" style="background:#f2f4f8"></span><span class="nm">Hatch / exit</span><span class="ct ${A.exits.length>=R.exitsRequired?'ok':'low'}">${A.exits.length}/${R.exitsRequired}</span><span class="kb">H</span></button>`);
+  if (G.D === 1) items.push(`<button class="tool ${tool==='exit'?'active':''}" data-t="exit"><span class="sw" style="background:#f2f4f8"></span><span class="nm">Hatch / exit</span><span class="ct ${A.exits.length>=R.exitsRequired?'ok':'low'}">${A.exits.length}/${R.exitsRequired}</span><span class="kb">H</span></button>`);
+  else {
+    items.push(`<button class="tool ${tool==='exit'?'active':''}" data-t="exit"><span class="sw" style="background:#f2f4f8"></span><span class="nm">Hatch / exit</span><span class="ct ${A.exits.length && !A.exitsShort?'ok':'low'}">${A.exits.length}</span><span class="kb">H</span></button>`);
+    items.push(`<button class="tool ${tool==='ladder'?'active':''}" data-t="ladder"><span class="sw" style="background:${LADDER_COLOR}"></span><span class="nm">Ladder (between decks)</span><span class="ct">${A.stats.ladders}</span><span class="kb">L</span></button>`);
+  }
   items.push(`<button class="tool ${tool==='erase'?'active':''}" data-t="erase"><span class="sw" style="background:var(--open)"></span><span class="nm">Eraser (corridor)</span><span class="kb">E</span></button>`);
   box.innerHTML = items.join('');
 }
  
+function renderToolHint(){
+  $('#toolHint').textContent = G.D > 1
+    ? 'Drag to paint · right-click to erase · hatches go on the outer wall · a ladder connects this spot to the deck above (or below, on the top deck)'
+    : 'Drag to paint · right-click to erase · hatches go on the outer wall';
+}
 function renderRules(){
   const R = A.R;
   const tag = src => src.url ? `<a class="src" href="${src.url}" target="_blank" rel="noopener">${src.short}</a>` : `<span class="src est">${src.short}</span>`;
@@ -839,7 +963,8 @@ function renderRules(){
     ['Total habitable volume', `≥ ${R.volPerCrew*S.crew} m³`, R.volSrc],
     ...ZK.filter(k=>R.zones[k]).map(k=>[ZONES[k].name, `≥ ${R.zones[k]} m²`, R.zoneSrc[k]]),
     ['Escape routes', 'no trapped areas', SRC.std],
-    ['Exits', `≥ ${R.exitsRequired}`, SRC.design],
+    G.D > 1 ? ['Ways out per deck', `≥ ${R.exitsRequired}`, SRC.design] : ['Exits', `≥ ${R.exitsRequired}`, SRC.design],
+    ...(G.D > 1 ? [['Sound through a deck floor', '≈ −24 dBA', SRC.est], ['Climbing one deck', `${S.height} m of escape distance`, SRC.design]] : []),
     ['Max escape distance', `${R.maxEgress} m`, SRC.design],
     ['Sleep noise limit', `${R.noiseLimit.sleep} dBA (${R.noiseLabel.sleep})`, SRC.acou],
     ['Work / medical noise', `${R.noiseLimit.work} dBA (NC-50)`, SRC.acou],
@@ -878,7 +1003,7 @@ function renderScore(){
 function renderStats(){
   const s = A.stats;
   $('#stats').innerHTML = [
-    [fmt(s.interior,0)+' m²','Floor area'],
+    [fmt(s.interior,0)+' m²', G.D>1 ? `Floor area (${G.D} decks)` : 'Floor area'],
     [fmt(s.nhv,0)+' m³','Habitable volume'],
     [fmt(s.perCrew)+' m³','Per crew member'],
     [pct(s.circ),'Circulation space'],
@@ -897,14 +1022,17 @@ function renderStats(){
 }
  
 function highlight(list){
+  if (list.length && G.D > 1 && !list.some(i => idk(i)===curDeck)) setDeck(idk(list[0]));   // jump to the deck with the problem
   cellEls.forEach(e=>e.classList.remove('hl'));
   void $('#grid').offsetWidth;
-  list.forEach(i => cellEls[i] && cellEls[i].classList.add('hl'));
+  const off = curDeck*G.N;
+  list.forEach(i => { if (idk(i)===curDeck && cellEls[i-off]) cellEls[i-off].classList.add('hl'); });
 }
  
 function refresh(){
   A = analyze();
-  renderGrid(); renderTools(); renderRules(); renderScore(); renderStats();
+  renderGrid(); renderDeckTabs(); renderTools(); renderToolHint(); renderRules(); renderScore(); renderStats();
+  $('#v3spread').style.display = G.D > 1 ? '' : 'none';
   if (overlay === '3d') draw3d();
 }
 let rafPending = false;
@@ -914,23 +1042,35 @@ function refreshSoon(){ if (rafPending) return; rafPending = true; requestAnimat
 function pushHistory(){ history.push(JSON.stringify(S)); if (history.length>80) history.shift(); }
 function undo(){
   if (!history.length) return toast('Nothing to undo');
-  const prev = JSON.parse(history.pop()), geoChanged = ['shape','a','b','height'].some(k => prev[k]!==S[k]);
-  S = prev; G = geometry(S); syncInputs(); if (geoChanged) buildGrid(); refresh();
+  const prev = JSON.parse(history.pop()), geoChanged = ['shape','a','b','height','decks'].some(k => (prev[k]||1)!==(S[k]||1));
+  S = prev; S.decks = S.decks || 1; G = geometry(S); syncInputs(); if (geoChanged) buildGrid(); refresh();
 }
-function paintAt(i, erase){
-  if (i<0 || !G.mask[i]) return;
+function paintAt(li, erase){          // li = cell index on the current deck
+  const base = curDeck*G.N, i = base + li;
+  if (li<0 || !G.mask[i]) return;
   const t = erase ? 'erase' : tool;
   if (t==='exit'){
     if (!isBoundary(i)) return toast('Hatches must be on the outer wall');
+    if (S.cells[i]==='ladder') return toast('Remove the ladder first (eraser)');
     S.cells[i] = S.cells[i]==='exit' ? null : 'exit'; return;
   }
-  const x0 = i%G.W, y0 = (i/G.W)|0, off = Math.floor((brush-1)/2);
+  if (t==='ladder'){
+    if (G.D < 2) return toast('Ladders connect decks: set Decks to 2 or 3 in the Mission panel first');
+    if (S.cells[i]==='ladder'){ S.cells[i] = null; cleanupLadders(); return; }
+    const up = curDeck < G.D-1, j = up ? i + G.N : i - G.N;
+    if (!G.mask[j]) return toast(`There is no floor ${up?'above':'below'} this spot`);
+    if (S.cells[i]==='exit' || S.cells[j]==='exit') return toast('A ladder cannot go on a hatch');
+    S.cells[i] = S.cells[j] = 'ladder';
+    return toast(`Ladder added between deck ${Math.min(curDeck, idk(j))+1} and deck ${Math.max(curDeck, idk(j))+1}`);
+  }
+  const x0 = li%G.W, y0 = (li/G.W)|0, off = Math.floor((brush-1)/2);
   for (let dy=0; dy<brush; dy++) for (let dx=0; dx<brush; dx++){
     const x=x0-off+dx, y=y0-off+dy; if (x<0||y<0||x>=G.W||y>=G.H) continue;
-    const j=y*G.W+x; if (!G.mask[j]) continue;
+    const j=base+y*G.W+x; if (!G.mask[j]) continue;
     if (t==='erase') S.cells[j] = null;
-    else if (S.cells[j] !== 'exit') S.cells[j] = t;
+    else if (S.cells[j] !== 'exit' && S.cells[j] !== 'ladder') S.cells[j] = t;
   }
+  if (t==='erase') cleanupLadders();
 }
 const grid = $('#grid');
 grid.addEventListener('contextmenu', e => e.preventDefault());
@@ -944,14 +1084,14 @@ window.addEventListener('pointermove', e => {
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const c = el && el.closest && el.closest('.c');
   if (c && grid.contains(c)){
-    const i = +c.dataset.i;
+    const li = +c.dataset.i, i = curDeck*G.N + li;
     if (G.mask[i] && A){
-      const x=i%G.W, y=(i/G.W)|0, v=S.cells[i];
+      const x=li%G.W, y=(li/G.W)|0, v=S.cells[i];
       const d = A.dist[i];
-      $('#status').textContent = `(${x}, ${y}) · ${v==='exit'?'Hatch':v?ZONES[v].name:'Open / corridor'} · noise ${Math.round(A.noiseMap[i])} dB · ceiling ${fmt(G.heights[i])} m · ` +
-        (v==='storage' ? 'not walkable' : d<0 ? 'trapped: no way to any exit' : `${d} m to exit`);
+      $('#status').textContent = `${G.D>1?`Deck ${curDeck+1} · `:''}(${x}, ${y}) · ${v==='exit'?'Hatch':v==='ladder'?'Ladder':v?ZONES[v].name:'Open / corridor'} · noise ${Math.round(A.noiseMap[i])} dB · ceiling ${fmt(G.heights[i])} m · ` +
+        (v==='storage' ? 'not walkable' : d<0 ? 'trapped: no way to any exit' : `${Math.round(d)} m to exit`);
     }
-    if (painting && tool!=='exit' && +c.dataset.i !== lastPainted){ lastPainted = +c.dataset.i; paintAt(lastPainted, eraseDrag); refreshSoon(); }
+    if (painting && tool!=='exit' && tool!=='ladder' && li !== lastPainted){ lastPainted = li; paintAt(lastPainted, eraseDrag); refreshSoon(); }
   }
 });
 window.addEventListener('pointerup', () => { painting = false; lastPainted = -1; });
@@ -972,7 +1112,11 @@ document.addEventListener('keydown', e => {
   if (e.target.matches('input,textarea,select')) return;
   if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); return; }
   const k = ZK.find(k => ZONES[k].key === e.key);
-  if (k) tool = k; else if (e.key.toLowerCase()==='h') tool='exit'; else if (e.key.toLowerCase()==='e') tool='erase'; else return;
+  if (k) tool = k; else if (e.key.toLowerCase()==='h') tool='exit'; else if (e.key.toLowerCase()==='e') tool='erase';
+  else if (e.key.toLowerCase()==='l' && G.D>1) tool='ladder';
+  else if ((e.key===']' || e.key==='PageUp') && G.D>1){ setDeck(curDeck+1); return; }
+  else if ((e.key==='[' || e.key==='PageDown') && G.D>1){ setDeck(curDeck-1); return; }
+  else return;
   renderTools();
 });
  
@@ -980,7 +1124,7 @@ document.addEventListener('keydown', e => {
 $('#inShape').innerHTML = Object.entries(SHAPES).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('');
 function syncInputs(){
   $('#inCrew').value = S.crew; $('#inDays').value = S.days; $('#inShape').value = S.shape;
-  $('#inA').value = S.a; $('#inB').value = S.b; $('#inH').value = S.height; $('#inStruct').value = S.structure || 'rigid';
+  $('#inA').value = S.a; $('#inB').value = S.b; $('#inH').value = S.height; $('#inStruct').value = S.structure || 'rigid'; $('#inDecks').value = S.decks || 1;
   const sh = SHAPES[S.shape];
   $('#lblA').textContent = sh.a[0];
   if (sh.b){ $('#wrapB').style.display=''; $('#lblB').textContent = sh.b[0]; } else $('#wrapB').style.display='none';
@@ -991,19 +1135,28 @@ function validateGeo(){
   if (S.shape==='ring') S.b = clamp(Math.round(S.b)||6, 2, S.a-4);
   if (S.shape==='lshape') S.b = clamp(Math.round(S.b)||4, 2, S.a-2);
   S.height = clamp(+S.height||2.5, 1.8, 5);
+  S.decks = clamp(Math.round(+S.decks||1), 1, 3);
 }
-function onGeoChange(){
+// change = function that edits S (shape, size, height, decks). History is saved BEFORE the edit so Undo restores it exactly.
+function onGeoChange(change){
   pushHistory();
   const old = {W:G.W, H:G.H, cells:S.cells};
-  validateGeo(); applyGeometry(old); syncInputs(); buildGrid(); refresh();
+  if (change) change();
+  validateGeo(); applyGeometry(old); curDeck = clamp(curDeck, 0, G.D-1); syncInputs(); buildGrid(); refresh();
 }
 $('#inCrew').addEventListener('change', e => { pushHistory(); S.crew = clamp(Math.round(+e.target.value)||1,1,12); syncInputs(); refresh(); });
 $('#inDays').addEventListener('change', e => { pushHistory(); S.days = clamp(Math.round(+e.target.value)||1,1,1500); syncInputs(); refresh(); });
-$('#inShape').addEventListener('change', e => { S.shape = e.target.value; S.structure = S.shape==='dome' ? 'inflatable' : 'rigid'; const sh = SHAPES[S.shape]; S.a = sh.a[1]; S.b = sh.b ? sh.b[1] : S.b; onGeoChange(); });
-$('#inA').addEventListener('change', e => { S.a = +e.target.value; onGeoChange(); });
-$('#inB').addEventListener('change', e => { S.b = +e.target.value; onGeoChange(); });
-$('#inH').addEventListener('change', e => { S.height = +e.target.value; onGeoChange(); });
+$('#inShape').addEventListener('change', e => onGeoChange(() => { S.shape = e.target.value; S.structure = S.shape==='dome' ? 'inflatable' : 'rigid'; const sh = SHAPES[S.shape]; S.a = sh.a[1]; S.b = sh.b ? sh.b[1] : S.b; }));
+$('#inA').addEventListener('change', e => onGeoChange(() => { S.a = +e.target.value; }));
+$('#inB').addEventListener('change', e => onGeoChange(() => { S.b = +e.target.value; }));
+$('#inH').addEventListener('change', e => onGeoChange(() => { S.height = +e.target.value; }));
 $('#inStruct').addEventListener('change', e => { pushHistory(); S.structure = e.target.value; refresh(); });
+$('#inDecks').addEventListener('change', e => {
+  const nd = +e.target.value, od = S.decks || 1;
+  onGeoChange(() => { S.decks = nd; });
+  if (nd > od){ curDeck = nd-1; buildGrid(); renderGrid(); renderDeckTabs(); toast(`Deck ${nd} added: use the Ladder tool to connect it`); }
+  else if (nd < od) toast(`Removed the top deck${od-nd>1?'s':''} (Undo brings ${od-nd>1?'them':'it'} back)`);
+});
 document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
   pushHistory(); const [c,d] = b.dataset.preset.split(',').map(Number); S.crew=c; S.days=d; syncInputs(); refresh(); toast(`Rules updated for ${c} crew × ${d} days`);
 }));
@@ -1011,14 +1164,15 @@ document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('clic
 /* ===================== AUTO-FIX ===================== */
 // Greedy local search: each round tries many small edits, keeps the one that raises the score most,
 // and repeats until nothing helps. Uses analyze() as the scoring function.
-const xy = i => `(${i%G.W}, ${(i/G.W)|0})`;
-const zname = v => v==='exit' ? 'hatch' : v ? ZONES[v].name.toLowerCase() : 'open floor';
+const xy = i => `(${ix(i)}, ${iy(i)})${G.D>1 ? ` on deck ${idk(i)+1}` : ''}`;
+const zname = v => v==='exit' ? 'hatch' : v==='ladder' ? 'ladder' : v ? ZONES[v].name.toLowerCase() : 'open floor';
+const fixed = v => v==='exit' || v==='ladder';   // auto-fix never moves hatches or ladders, it only adds them
 // Seeded random numbers: the same layout always gets the same auto-fix result (no surprises in a demo).
 let rng = Math.random;
 function seededRng(seed){ let t = seed >>> 0; return () => { t += 0x6D2B79F5; let r = Math.imul(t ^ t>>>15, 1 | t); r ^= r + Math.imul(r ^ r>>>7, 61 | r); return ((r ^ r>>>14) >>> 0) / 4294967296; }; }
-function layoutHash(){ const str = JSON.stringify([S.crew,S.days,S.shape,S.a,S.b,S.height,S.cells]); let h = 2166136261; for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function layoutHash(){ const str = JSON.stringify((S.decks||1) > 1 ? [S.crew,S.days,S.shape,S.a,S.b,S.height,S.decks,S.cells] : [S.crew,S.days,S.shape,S.a,S.b,S.height,S.cells]); let h = 2166136261; for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function shuffle(a){ for (let i=a.length-1;i>0;i--){ const j=rng()*(i+1)|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function nbrs4(i){ const x=i%G.W, y=(i/G.W)|0, r=[]; for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx, ny=y+dy; if (nx>=0&&ny>=0&&nx<G.W&&ny<G.H&&G.mask[ny*G.W+nx]) r.push(ny*G.W+nx); } return r; }
+function nbrs4(i){ const d=idk(i), x=ix(i), y=iy(i), r=[]; for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx, ny=y+dy, j=d*G.N+ny*G.W+nx; if (nx>=0&&ny>=0&&nx<G.W&&ny<G.H&&G.mask[j]) r.push(j); } return r; }
  
 function candidates(a){
   const C = [], cells = S.cells, n = cells.length, interior = [];
@@ -1026,7 +1180,17 @@ function candidates(a){
   const set = (i,v,label) => C.push({cells:[i], vals:[v], label});
   const egressBad = a.checks.some(c => c.cat==='egress' && c.status!=='pass');
   // 1. hatches on the outer wall
-  if (egressBad) for (const i of interior) if (isBoundary(i) && cells[i]!=='exit') set(i,'exit',`Added a hatch at ${xy(i)}`);
+  const big = interior.length > 300;   // big habitats: try a smaller random sample of each kind of change (keeps auto-fix fast)
+  if (egressBad){
+    let wall = interior.filter(i => isBoundary(i) && !fixed(cells[i]));
+    if (wall.length > 60) wall = shuffle(wall).slice(0,60);
+    for (const i of wall) set(i,'exit',`Added a hatch at ${xy(i)}`);
+  }
+  // 1b. ladders between decks (only when there is more than one deck)
+  if (egressBad && G.D > 1) for (let d=0; d<G.D-1; d++){
+    const spots = interior.filter(i => idk(i)===d && G.mask[i+G.N] && !fixed(cells[i]) && !fixed(cells[i+G.N]) && cells[i]!=='storage' && cells[i+G.N]!=='storage');
+    shuffle(spots).slice(0,25).forEach(i => C.push({cells:[i, i+G.N], vals:['ladder','ladder'], label:`Added a ladder between deck ${d+1} and deck ${d+2} at (${ix(i)}, ${iy(i)})`}));
+  }
   // 2. open gaps in storage next to trapped areas
   const trapped = new Set(a.unreachable);
   for (const i of interior) if (cells[i]==='storage' && nbrs4(i).some(j=>trapped.has(j))) set(i,null,`Opened a gap in the storage at ${xy(i)}`);
@@ -1034,23 +1198,23 @@ function candidates(a){
   for (const k of ZK){
     const req = a.R.zones[k]; if (!req || a.count[k] >= req) continue;
     const front = new Set();
-    for (const i of interior) if (cells[i]===k) nbrs4(i).forEach(j=>{ const v=cells[j]; if (v!==k && v!=='exit' && (!v || a.count[v] > (a.R.zones[v]||0))) front.add(j); });
+    for (const i of interior) if (cells[i]===k) nbrs4(i).forEach(j=>{ const v=cells[j]; if (v!==k && !fixed(v) && (!v || a.count[v] > (a.R.zones[v]||0))) front.add(j); });
     let pool = front.size ? [...front] : interior.filter(i=>!cells[i]);
-    shuffle(pool).slice(0,30).forEach(j => set(j,k,`Added ${zname(k)} at ${xy(j)}${cells[j]?` (was surplus ${zname(cells[j])})`:''}`));
+    shuffle(pool).slice(0, big ? 12 : 30).forEach(j => set(j,k,`Added ${zname(k)} at ${xy(j)}${cells[j]?` (was surplus ${zname(cells[j])})`:''}`));
   }
   // 4. move / swap / clear cells that a failing check points at
   const bad = new Set();
   a.checks.forEach(c => { if (c.status!=='pass' && c.cat!=='zones' && c.cat!=='efficiency') c.cells.forEach(i=>bad.add(i)); });
-  const badList = shuffle([...bad].filter(i=>cells[i] && cells[i]!=='exit')).slice(0,10);
+  const badList = shuffle([...bad].filter(i=>cells[i] && !fixed(cells[i]))).slice(0, big ? 6 : 10);
   for (const i of badList){
     set(i,null,`Cleared ${zname(cells[i])} at ${xy(i)}`);
-    for (const j of shuffle(interior.filter(j=>cells[j]!==cells[i] && cells[j]!=='exit')).slice(0,18)){
+    for (const j of shuffle(interior.filter(j=>cells[j]!==cells[i] && !fixed(cells[j]))).slice(0,18)){
       C.push({cells:[i,j], vals:[cells[j],cells[i]], label: cells[j] ? `Swapped ${zname(cells[i])} ${xy(i)} with ${zname(cells[j])} ${xy(j)}` : `Moved ${zname(cells[i])} from ${xy(i)} to ${xy(j)}`});
     }
   }
   // 5. too much empty floor: fill open cells next to zones that are the furthest below their requirement
   if (a.stats.circ > .40) for (const i of shuffle(interior.filter(i=>!cells[i])).slice(0,12)){
-    const near = nbrs4(i).map(j=>cells[j]).filter(v=>v && v!=='exit');
+    const near = nbrs4(i).map(j=>cells[j]).filter(v=>isZone(v));
     if (near.length) set(i, near[0], `Added ${zname(near[0])} at ${xy(i)} to use empty floor`);
   }
   return C;
@@ -1064,9 +1228,10 @@ async function autoFix(){
   const before = A.total, log = [], changed = new Set(), t0 = performance.now();
   const beforeLayout = {...S, cells:[...S.cells]}, beforeA = A;
   rng = seededRng(layoutHash());
-  let cur = analyze();
-  for (let round=0; round<60; round++){
+  let cur = analyze(), budget = 12000;   // stop after a fixed amount of work (not time), so results are always repeatable
+  for (let round=0; round<60 && budget > 0; round++){
     const C = candidates(cur); let best = null;
+    budget -= C.length;
     for (const c of C){
       const old = c.cells.map(i=>S.cells[i]);
       c.cells.forEach((i,k)=>S.cells[i]=c.vals[k]);
@@ -1080,7 +1245,7 @@ async function autoFix(){
     cur = best.a;
     btn.textContent = `✨ Fixing… ${cur.total}`;
     await new Promise(r=>setTimeout(r,0));
-    if (performance.now()-t0 > 20000) break;   // safety stop for very large habitats
+    if (performance.now()-t0 > 30000) break;   // last-resort safety stop (normally the work budget ends first)
   }
   refresh();
   btn.disabled = false; btn.textContent = '✨ Auto-fix'; fixing = false;
@@ -1098,6 +1263,7 @@ async function autoFix(){
 }
  
 /* Before / after comparison shown after an auto-fix */
+const deckCap = L => (L.decks||1) > 1 ? `<div style="font-size:11px;color:var(--muted)">Decks left to right: ${Array.from({length:L.decks},(_,d)=>`deck ${d+1}`).join(' · ')}</div>` : '';
 function showBeforeAfter(L0, A0, L1, A1, nChanges){
   const card = $('#baCard');
   const diff = []; for (let i=0;i<L1.cells.length;i++) if (L0.cells[i] !== L1.cells[i]) diff.push(i);
@@ -1114,9 +1280,9 @@ function showBeforeAfter(L0, A0, L1, A1, nChanges){
       <button class="small" id="baKeep">Keep after ✓</button><button class="small" id="baBack">Go back to before</button><button class="small" id="baClose">Close</button></div>
     <div class="ba">
       <div class="bapane"><div class="lab">Before</div><div class="big" style="color:${col(A0.total)}">${A0.total} <span style="font-size:18px">${A0.grade}</span></div>
-        <canvas id="baC0"></canvas><div class="cap">${capTxt(A0)}</div></div>
+        <canvas id="baC0"></canvas>${deckCap(L0)}<div class="cap">${capTxt(A0)}</div></div>
       <div class="bapane after"><div class="lab">After · ${nChanges} change${nChanges>1?'s':''} (${diff.length} cells, outlined)</div><div class="big" style="color:${col(A1.total)}">${A1.total} <span style="font-size:18px">${A1.grade}</span></div>
-        <canvas id="baC1"></canvas><div class="cap">${capTxt(A1)}</div></div>
+        <canvas id="baC1"></canvas>${deckCap(L1)}<div class="cap">${capTxt(A1)}</div></div>
     </div>
     <table class="badiff"><thead><tr><th></th><th>Before</th><th>After</th><th>Change</th></tr></thead><tbody>
       ${row('Total score', A0.total, A1.total, v=>Math.round(v))}
@@ -1140,8 +1306,8 @@ $('#btnFix').onclick = autoFix;
 /* ===================== EXAMPLES ===================== */
 function loadExample(bad){
   pushHistory();
-  S = {crew:6, days:180, shape:'rect', a:12, b:8, height:2.5, structure:'rigid', cells:[]};
-  applyGeometry(null);
+  S = {crew:6, days:180, shape:'rect', a:12, b:8, height:2.5, structure:'rigid', decks:1, cells:[]};
+  applyGeometry(null); curDeck = 0;
   const R = (k,x0,y0,x1,y1) => { for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) S.cells[y*G.W+x]=k; };
   if (!bad){
     R('sleep',0,0,4,2); R('storage',5,0,5,2); R('work',6,0,8,2);
@@ -1160,6 +1326,49 @@ function loadExample(bad){
   syncInputs(); buildGrid(); refresh();
   toast(bad ? 'Flawed example loaded: try fixing it!' : 'Example loaded');
 }
+// Two-deck example: noisy and "wet" zones on the ground deck, sleep / medical / work upstairs.
+function loadExample2(bad){
+  if (bad) return loadExample2Bad();
+  pushHistory();
+  S = {crew:6, days:180, shape:'rect', a:10, b:5, height:2.5, structure:'rigid', decks:2, cells:[]};
+  applyGeometry(null); curDeck = 0;
+  const R = (d,k,x0,y0,x1,y1) => { for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) S.cells[d*G.N + y*G.W + x]=k; };
+  // deck 1 (ground): galley, hygiene, gym, storage, both main hatches
+  R(0,'food',0,0,3,1); R(0,'storage',4,0,7,0); R(0,'hygiene',8,0,9,1);   // one shelf row, walkway in front
+  R(0,'storage',1,4,3,4); R(0,'exercise',5,3,8,4); R(0,'storage',9,3,9,4);
+  R(0,'exit',0,2,0,2); R(0,'exit',9,2,9,2);
+  // deck 2 (upper): crew quarters, medical bay, workstations, a docking-port hatch
+  R(1,'medical',0,0,1,1); R(1,'sleep',2,0,9,1); R(1,'work',5,3,9,4);
+  R(1,'exit',9,2,9,2);
+  // ladder between the decks, far from the gym so its noise doesn't climb up
+  R(0,'ladder',0,4,0,4); R(1,'ladder',0,4,0,4);
+  syncInputs(); buildGrid(); refresh();
+  toast('2-deck good example loaded: switch decks with the tabs above the grid');
+}
+// Two-deck example with typical multi-floor mistakes, for demos and for auto-fix:
+//  • deck 2 has no hatch and only one ladder → only 1 way out (needs 2)
+//  • the ladder is right next to the gym, so gym noise climbs up into the sleep area
+//  • storage upstairs walls off a corner (trapped crew + medical bay nobody can reach)
+//  • hygiene next to the galley, a double-deep storage block, too little sleep space
+function loadExample2Bad(){
+  pushHistory();
+  S = {crew:6, days:180, shape:'rect', a:10, b:5, height:2.5, structure:'rigid', decks:2, cells:[]};
+  applyGeometry(null); curDeck = 0;
+  const R = (d,k,x0,y0,x1,y1) => { for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) S.cells[d*G.N + y*G.W + x]=k; };
+  // deck 1 (ground)
+  R(0,'food',0,0,3,1); R(0,'hygiene',4,0,5,1); R(0,'storage',6,0,9,1);
+  R(0,'storage',0,4,3,4); R(0,'exercise',5,3,8,4);
+  R(0,'exit',0,2,0,2);
+  // deck 2 (upper)
+  R(1,'work',0,0,4,1); R(1,'storage',5,0,5,0); R(1,'storage',5,1,9,1); R(1,'medical',6,0,7,0);
+  R(1,'sleep',0,3,3,4); R(1,'sleep',5,3,6,4);
+  // the only ladder, right beside the gym
+  R(0,'ladder',4,3,4,3); R(1,'ladder',4,3,4,3);
+  syncInputs(); buildGrid(); refresh();
+  toast('2-deck flawed example loaded: check both decks, then try Auto-fix');
+}
+$('#btnEx2').onclick = () => { $('#baCard').style.display='none'; $('#fixlog').innerHTML=''; loadExample2(false); };
+$('#btnEx2Bad').onclick = () => { $('#baCard').style.display='none'; $('#fixlog').innerHTML=''; loadExample2(true); };
 $('#btnExGood').onclick = () => { $('#baCard').style.display='none'; $('#fixlog').innerHTML=''; loadExample(false); };
 $('#btnExBad').onclick = () => { $('#baCard').style.display='none'; $('#fixlog').innerHTML=''; loadExample(true); };
 $('#btnUndo').onclick = undo;
@@ -1170,7 +1379,7 @@ function loadStore(){ try { const v = localStorage.getItem(STORE_KEY); if (v) re
 function saveStore(list){ memStore = list; try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch(e){} }
 function snapshot(name){
   return {id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), name, savedAt:new Date().toISOString(),
-    crew:S.crew, days:S.days, shape:S.shape, a:S.a, b:S.b, height:S.height, structure:S.structure, cells:[...S.cells],
+    crew:S.crew, days:S.days, shape:S.shape, a:S.a, b:S.b, height:S.height, structure:S.structure, decks:S.decks||1, cells:[...S.cells],
     total:A.total, grade:A.grade, cats:{...A.cats}, stats:{...A.stats}};
 }
 $('#btnSave').onclick = () => {
@@ -1179,14 +1388,16 @@ $('#btnSave').onclick = () => {
   list.push(snapshot(name)); saveStore(list); $('#saveName').value='';
   renderSaved(); toast(`Saved "${name}"`);
 };
+// Thumbnail of a layout; with several decks they are drawn side by side (deck 1 on the left).
 function drawThumb(cv, L, size=180, mark=null){
-  const g = geometry(L), s = Math.max(2, Math.floor(size / Math.max(g.W, g.H)));
-  cv.width = g.W*s; cv.height = g.H*s; const ctx = cv.getContext('2d');
-  for (let i=0;i<g.W*g.H;i++){ if (!g.mask[i]) continue; const v = L.cells[i];
-    ctx.fillStyle = v==='exit' ? '#f2f4f8' : v ? ZONES[v].color : '#1f2536';
-    ctx.fillRect((i%g.W)*s, ((i/g.W)|0)*s, s-.5, s-.5); }
+  const g = geometry(L), cols = g.D*g.W + (g.D-1), s = Math.max(2, Math.floor(size / Math.max(cols, g.H)));
+  cv.width = cols*s; cv.height = g.H*s; const ctx = cv.getContext('2d');
+  const pos = i => { const d = (i/g.N)|0, l = i % g.N; return [(d*(g.W+1) + l%g.W)*s, ((l/g.W)|0)*s]; };
+  for (let i=0;i<g.D*g.N;i++){ if (!g.mask[i]) continue; const v = L.cells[i], [px,py] = pos(i);
+    ctx.fillStyle = v==='exit' ? '#f2f4f8' : v==='ladder' ? LADDER_COLOR : v && ZONES[v] ? ZONES[v].color : '#1f2536';
+    ctx.fillRect(px, py, s-.5, s-.5); }
   if (mark) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.5, s/9);
-    for (const i of mark){ const lw = ctx.lineWidth; ctx.strokeRect((i%g.W)*s + lw/2, ((i/g.W)|0)*s + lw/2, s - lw - .5, s - lw - .5); } }
+    for (const i of mark){ const lw = ctx.lineWidth, [px,py] = pos(i); ctx.strokeRect(px + lw/2, py + lw/2, s - lw - .5, s - lw - .5); } }
 }
 function renderSaved(){
   const list = loadStore(), box = $('#saved');
@@ -1194,7 +1405,7 @@ function renderSaved(){
   if (!list.length){ box.innerHTML = '<div class="empty">No saved layouts yet. Save a few variations, then tick them to compare side by side.</div>'; $('#compare').innerHTML=''; return; }
   box.innerHTML = list.map(L => `<div class="sv ${compareSel.has(L.id)?'sel':''}" data-id="${L.id}">
     <canvas></canvas>
-    <div class="row" style="align-items:center"><div style="min-width:0"><div class="nm">${esc(L.name)}</div><div class="mt">${L.crew} crew · ${L.days} d · ${SHAPES[L.shape].name}</div></div><div class="sc" style="flex:none;color:${L.total>=75?'var(--good)':L.total>=50?'var(--warn)':'var(--bad)'}">${L.total}</div></div>
+    <div class="row" style="align-items:center"><div style="min-width:0"><div class="nm">${esc(L.name)}</div><div class="mt">${L.crew} crew · ${L.days} d · ${SHAPES[L.shape].name}${(L.decks||1)>1?` · ${L.decks} decks`:''}</div></div><div class="sc" style="flex:none;color:${L.total>=75?'var(--good)':L.total>=50?'var(--warn)':'var(--bad)'}">${L.total}</div></div>
     <div class="bt"><label style="font-size:12px;display:flex;gap:4px;align-items:center;flex:1"><input type="checkbox" data-cmp ${compareSel.has(L.id)?'checked':''}> Compare</label>
     <button class="small" data-load>Load</button><button class="small" data-del>✕</button></div></div>`).join('');
   box.querySelectorAll('.sv').forEach(el => drawThumb(el.querySelector('canvas'), list.find(l=>l.id===el.dataset.id)));
@@ -1209,8 +1420,8 @@ $('#saved').addEventListener('click', e => {
     renderSaved();
   } else if (e.target.matches('[data-load]')){
     pushHistory();
-    S = {crew:L.crew, days:L.days, shape:L.shape, a:L.a, b:L.b, height:L.height, structure:L.structure||'rigid', cells:[...L.cells]};
-    G = geometry(S); syncInputs(); buildGrid(); refresh(); toast(`Loaded "${L.name}"`);
+    S = {crew:L.crew, days:L.days, shape:L.shape, a:L.a, b:L.b, height:L.height, structure:L.structure||'rigid', decks:L.decks||1, cells:[...L.cells]};
+    G = geometry(S); curDeck = 0; syncInputs(); buildGrid(); refresh(); toast(`Loaded "${L.name}"`);
   } else if (e.target.matches('[data-del]')){
     saveStore(list.filter(l=>l.id!==id)); compareSel.delete(id); renderSaved();
   }
@@ -1228,9 +1439,10 @@ function renderCompare(list){
     ['Conflicting neighbours', L=>L.stats.conflicts, 'min', v=>v],
     ['Longest escape', L=>L.stats.maxEgress ?? 999, 'min', v=>v===999?'—':v+' m'],
     ['Exits', L=>L.stats.exits, 'max', v=>v],
+    ['Decks', L=>L.decks||1, 'none', v=>v],
   ];
   $('#compare').innerHTML = `<table class="cmp"><thead><tr><th></th>${sel.map(L=>`<th>${esc(L.name)}<br><span style="font-size:11px">${L.crew} crew · ${L.days} d</span></th>`).join('')}</tr></thead><tbody>` +
-    rows.map(([lab,get,dir,f]) => { const vals = sel.map(get); const best = dir==='max'?Math.max(...vals):Math.min(...vals);
+    rows.map(([lab,get,dir,f]) => { const vals = sel.map(get); const best = dir==='none' ? NaN : dir==='max'?Math.max(...vals):Math.min(...vals);
       return `<tr><th>${lab}</th>${vals.map(v=>`<td class="${v===best && new Set(vals).size>1?'best':''}">${f(v)}</td>`).join('')}</tr>`; }).join('') + '</tbody></table>';
 }
  
@@ -1254,7 +1466,7 @@ $('#mOk').onclick = () => {
     const data = JSON.parse($('#mText').value);
     const incoming = Array.isArray(data) ? data : (data.saved || []);
     if (data.current) incoming.push({...data.current, name: data.current.name==='Current' ? 'Imported layout' : data.current.name});
-    const ok = incoming.filter(L => L && L.cells && SHAPES[L.shape]).map(L => ({...L, id: Date.now().toString(36)+Math.random().toString(36).slice(2,6)}));
+    const ok = incoming.filter(L => L && L.cells && SHAPES[L.shape]).map(L => ({...L, decks: L.decks||1, id: Date.now().toString(36)+Math.random().toString(36).slice(2,6)}));
     if (!ok.length) throw 0;
     saveStore(loadStore().concat(ok)); renderSaved(); $('#modal').classList.remove('on'); toast(`Imported ${ok.length} layout${ok.length>1?'s':''}`);
   } catch(e){ toast('That JSON could not be read'); }
@@ -1268,7 +1480,7 @@ let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setT
 /* ===================== 3D VIEW ===================== */
 // A tiny dependency-free 3D renderer: every grid cell becomes a block, faces are projected with
 // perspective and drawn back-to-front (painter's algorithm) on a 2D canvas. Works offline.
-const v3 = {yaw: -0.65, pitch: 0.75, zoom: 1, spin: true, mode: 'zones', labels: true, dragging: false, last: 0};
+const v3 = {yaw: -0.65, pitch: 0.75, zoom: 1, spin: true, mode: 'zones', labels: true, spread: true, dragging: false, last: 0};
 const ZONE_H = {sleep:1.6, exercise:1.2, hygiene:2.1, food:0.9, work:1.0, medical:1.3, storage:2.2}; // block heights (m), like furniture
 const LIGHT = (() => { const v=[0.45,1,0.3], m=Math.hypot(...v); return v.map(x=>x/m); })();
 function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255, n>>8&255, n&255]; }
@@ -1301,24 +1513,26 @@ function topColor(i, v){
     const t = d/Math.max(1,A.R.maxEgress); return [Math.round(40+40*t), Math.round(120+60*(1-t)), 255];
   }
   if (v==='exit') return [242,244,248];
-  return v ? hexRgb(ZONES[v].color) : [34,40,58];
+  if (v==='ladder') return hexRgb(LADDER_COLOR);
+  return isZone(v) ? hexRgb(ZONES[v].color) : [34,40,58];
 }
 function draw3d(){
   if (!A || overlay!=='3d') return;
   const cv = $('#c3d'), ctx = cv.getContext('2d'), Wc = cv.width, Hc = cv.height;
-  const {W,H,mask,heights} = G, cells = S.cells;
+  const {W,H,D,N,mask,heights} = G, cells = S.cells, hD = S.height;
   ctx.clearRect(0,0,Wc,Hc);
-  const cx = W/2, cz = H/2, maxDim = Math.max(W,H);
-  const D = maxDim * 1.7 / v3.zoom, f = Math.min(Wc,Hc) * 1.25;
+  const gap = D>1 ? (v3.spread ? 2.6 : 0.15) : 0;               // space between decks (spread apart = easier to see)
+  const base = d => d*(hD + gap), totalH = base(D-1) + hD;
+  const cx = W/2, cz = H/2, maxDim = Math.max(W, H, totalH*1.3), yMid = D===1 ? 0.8 : totalH*0.42;
+  const Dd = maxDim * 1.7 / v3.zoom, f = Math.min(Wc,Hc) * 1.25;
   const cy = Math.cos(v3.yaw), sy = Math.sin(v3.yaw), cp = Math.cos(v3.pitch), sp = Math.sin(v3.pitch);
   const proj = (x,y,z) => {
-    x -= cx; z -= cz; y -= 0.8;
+    x -= cx; z -= cz; y -= yMid;
     const x1 = x*cy - z*sy, z1 = x*sy + z*cy;
-    const y2 = y*cp + z1*sp, z2 = -y*sp + z1*cp + D;
+    const y2 = y*cp + z1*sp, z2 = -y*sp + z1*cp + Dd;
     return [Wc/2 + f*x1/z2, Hc*0.52 - f*y2/z2, z2];
   };
   const faces = [];
-  // face: list of world points (counter-clockwise seen from outside), fill, stroke, normal
   const addFace = (pts, rgb, normal, opts={}) => {
     const P = pts.map(p=>proj(...p));
     let area = 0; for (let k=0;k<P.length;k++){ const a=P[k], b=P[(k+1)%P.length]; area += a[0]*b[1]-b[0]*a[1]; }
@@ -1328,37 +1542,50 @@ function draw3d(){
     const lit = .55 + .45*Math.max(0, normal[0]*LIGHT[0]+normal[1]*LIGHT[1]+normal[2]*LIGHT[2]);
     faces.push({P, depth, fill: opts.fill || shadeCss(rgb, lit, opts.alpha ?? 1), stroke: opts.stroke || 'rgba(0,0,0,.35)', lw: opts.lw || 1});
   };
-  const valAt = (x,z) => (x<0||z<0||x>=W||z>=H||!mask[z*W+x]) ? undefined : cells[z*W+x];
-  const blockH = (i) => { const v = cells[i]; if (!v) return 0; const cap = Math.max(.4, heights[i]-.05);
+  const addBox = (x0,x1,z0,z1,y0,y1,rgb) => {
+    addFace([[x0,y1,z0],[x0,y1,z1],[x1,y1,z1],[x1,y1,z0]], rgb, [0,1,0]);
+    addFace([[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]], rgb, [1,0,0]);
+    addFace([[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[x0,y0,z0]], rgb, [-1,0,0]);
+    addFace([[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[x0,y0,z1]], rgb, [0,0,1]);
+    addFace([[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0]], rgb, [0,0,-1]);
+  };
+  const valAt = (d,x,z) => (x<0||z<0||x>=W||z>=H||!mask[d*N+z*W+x]) ? undefined : cells[d*N+z*W+x];
+  const blockH = (i) => { const v = cells[i]; if (!v || v==='ladder') return 0; const cap = Math.max(.4, heights[i]-.05);
     return v==='exit' ? Math.min(2.1, cap) : Math.min(ZONE_H[v]||1, cap); };
-  for (let z=0; z<H; z++) for (let x=0; x<W; x++){
-    const i = z*W+x; if (!mask[i]) continue;
-    const v = cells[i], h = blockH(i), top = topColor(i, v), side = v && v!=='exit' ? hexRgb(ZONES[v].color) : v==='exit' ? [220,224,232] : [34,40,58];
-    // top (or floor tile)
-    addFace([[x,h,z],[x,h,z+1],[x+1,h,z+1],[x+1,h,z]], top, [0,1,0], {stroke: h ? 'rgba(0,0,0,.35)' : 'rgba(255,255,255,.05)'});
-    if (h > 0){
-      // side faces only where the neighbour is lower or a different zone
-      const sides = [
-        {dx:1, dz:0, pts:[[x+1,0,z],[x+1,h,z],[x+1,h,z+1],[x+1,0,z+1]], n:[1,0,0]},
-        {dx:-1,dz:0, pts:[[x,0,z+1],[x,h,z+1],[x,h,z],[x,0,z]],         n:[-1,0,0]},
-        {dx:0, dz:1, pts:[[x+1,0,z+1],[x+1,h,z+1],[x,h,z+1],[x,0,z+1]], n:[0,0,1]},
-        {dx:0, dz:-1,pts:[[x,0,z],[x,h,z],[x+1,h,z],[x+1,0,z]],         n:[0,0,-1]},
-      ];
-      for (const sd of sides){
-        const nv = valAt(x+sd.dx, z+sd.dz), j = (z+sd.dz)*W + (x+sd.dx);
-        if (nv === v && blockH(j) >= h) continue;
-        addFace(sd.pts, side, sd.n);
+  const ladRgb = hexRgb(LADDER_COLOR);
+  for (let d=0; d<D; d++){
+    const y0 = base(d);
+    for (let z=0; z<H; z++) for (let x=0; x<W; x++){
+      const i = d*N + z*W + x; if (!mask[i]) continue;
+      const v = cells[i], h = blockH(i), top = topColor(i, v), side = isZone(v) ? hexRgb(ZONES[v].color) : v==='exit' ? [220,224,232] : [34,40,58];
+      // top (or floor tile). Upper-deck floors are see-through so the deck below stays visible.
+      addFace([[x,y0+h,z],[x,y0+h,z+1],[x+1,y0+h,z+1],[x+1,y0+h,z]], top, [0,1,0],
+        {stroke: h ? 'rgba(0,0,0,.35)' : 'rgba(255,255,255,.05)', alpha: (h===0 && d>0) ? .55 : 1});
+      if (h > 0){
+        const sides = [
+          {dx:1, dz:0, pts:[[x+1,y0,z],[x+1,y0+h,z],[x+1,y0+h,z+1],[x+1,y0,z+1]], n:[1,0,0]},
+          {dx:-1,dz:0, pts:[[x,y0,z+1],[x,y0+h,z+1],[x,y0+h,z],[x,y0,z]],         n:[-1,0,0]},
+          {dx:0, dz:1, pts:[[x+1,y0,z+1],[x+1,y0+h,z+1],[x,y0+h,z+1],[x,y0,z+1]], n:[0,0,1]},
+          {dx:0, dz:-1,pts:[[x,y0,z],[x,y0+h,z],[x+1,y0+h,z],[x+1,y0,z]],         n:[0,0,-1]},
+        ];
+        for (const sd of sides){
+          const nv = valAt(d, x+sd.dx, z+sd.dz), j = d*N + (z+sd.dz)*W + (x+sd.dx);
+          if (nv === v && blockH(j) >= h) continue;
+          addFace(sd.pts, side, sd.n);
+        }
       }
-    }
-    // hull walls on the outer edge (translucent, far side only)
-    const wh = heights[i];
-    for (const [dx,dz,pts,n] of [
-      [1,0,[[x+1,0,z],[x+1,wh,z],[x+1,wh,z+1],[x+1,0,z+1]],[1,0,0]],
-      [-1,0,[[x,0,z+1],[x,wh,z+1],[x,wh,z],[x,0,z]],[-1,0,0]],
-      [0,1,[[x+1,0,z+1],[x+1,wh,z+1],[x,wh,z+1],[x,0,z+1]],[0,0,1]],
-      [0,-1,[[x,0,z],[x,wh,z],[x+1,wh,z],[x+1,0,z]],[0,0,-1]]]){
-      if (valAt(x+dx, z+dz) === undefined)
-        addFace(pts, [150,175,230], n, {farOnly:true, fill:'rgba(140,165,230,.13)', stroke:'rgba(160,185,240,.28)'});
+      // ladder: a yellow post up to the deck above
+      if (v==='ladder' && ladderLinks(i).some(j => j > i)) addBox(x+.3, x+.7, z+.3, z+.7, y0, base(d+1)+.05, ladRgb);
+      // hull walls on the outer edge (translucent, far side only)
+      const wh = heights[i];
+      for (const [dx,dz,pts,n] of [
+        [1,0,[[x+1,y0,z],[x+1,y0+wh,z],[x+1,y0+wh,z+1],[x+1,y0,z+1]],[1,0,0]],
+        [-1,0,[[x,y0,z+1],[x,y0+wh,z+1],[x,y0+wh,z],[x,y0,z]],[-1,0,0]],
+        [0,1,[[x+1,y0,z+1],[x+1,y0+wh,z+1],[x,y0+wh,z+1],[x,y0,z+1]],[0,0,1]],
+        [0,-1,[[x,y0,z],[x,y0+wh,z],[x+1,y0+wh,z],[x+1,y0,z]],[0,0,-1]]]){
+        if (valAt(d, x+dx, z+dz) === undefined)
+          addFace(pts, [150,175,230], n, {farOnly:true, fill:'rgba(140,165,230,.13)', stroke:'rgba(160,185,240,.28)'});
+      }
     }
   }
   faces.sort((a,b)=>b.depth-a.depth);
@@ -1366,35 +1593,36 @@ function draw3d(){
     ctx.beginPath(); fc.P.forEach((p,k)=> k ? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1])); ctx.closePath();
     ctx.fillStyle = fc.fill; ctx.fill(); ctx.strokeStyle = fc.stroke; ctx.lineWidth = fc.lw; ctx.stroke();
   }
-  // outline of the hull rim (near side too, as a thin line, so the shape is always visible)
+  // outline of the hull rim of every deck (near side too, as a thin line, so the shape is always visible)
   ctx.strokeStyle = 'rgba(170,195,250,.45)'; ctx.lineWidth = 1.2; ctx.beginPath();
-  for (let z=0; z<H; z++) for (let x=0; x<W; x++){ const i=z*W+x; if (!mask[i]) continue; const wh = heights[i];
+  for (let d=0; d<D; d++) for (let z=0; z<H; z++) for (let x=0; x<W; x++){ const i=d*N+z*W+x; if (!mask[i]) continue; const wh = base(d) + heights[i];
     for (const [dx,dz,a,b] of [[1,0,[x+1,z],[x+1,z+1]],[-1,0,[x,z],[x,z+1]],[0,1,[x,z+1],[x+1,z+1]],[0,-1,[x,z],[x+1,z]]]){
-      if (valAt(x+dx,z+dz) !== undefined) continue;
+      if (valAt(d,x+dx,z+dz) !== undefined) continue;
       const p = proj(a[0],wh,a[1]), q = proj(b[0],wh,b[1]); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); } }
   ctx.stroke();
-  // longest escape route in exits mode
+  // longest escape route in exits mode (climbs ladders between decks)
   if (v3.mode==='egress' && A.worstPath.length > 1){
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.setLineDash([6,4]); ctx.beginPath();
-    A.worstPath.forEach((i,k) => { const p = proj((i%W)+.5, blockH(i)+.08, ((i/W)|0)+.5); k ? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1]); });
+    A.worstPath.forEach((i,k) => { const p = proj(ix(i)+.5, base(idk(i))+blockH(i)+.08, iy(i)+.5); k ? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1]); });
     ctx.stroke(); ctx.setLineDash([]);
   }
-  // labels at the centre of each zone's biggest piece
+  // labels at the centre of each zone's biggest piece on every deck
   if (v3.labels){
     const dpr = Wc / cv.getBoundingClientRect().width;
     ctx.font = `600 ${Math.round(11*dpr)}px system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const done = new Set();
-    for (const k of [...ZK, 'exit']){
-      const seen = new Set(); let best = [];
-      for (let i=0;i<cells.length;i++){ if (!mask[i] || cells[i]!==k || seen.has(i)) continue;
-        const comp=[i]; seen.add(i);
-        for (let h=0;h<comp.length;h++){ const c=comp[h], x=c%W, y=(c/W)|0;
-          for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue; const j=ny*W+nx; if (mask[j]&&cells[j]===k&&!seen.has(j)){ seen.add(j); comp.push(j);} } }
-        if (k==='exit'){ const p = proj((i%W)+.5, blockH(i)+.45, ((i/W)|0)+.5); drawTag(ctx, 'Hatch', p, dpr); }
-        else if (comp.length > best.length) best = comp; }
-      if (k==='exit' || !best.length) continue;
-      let sx=0, sz=0, mh=0; best.forEach(i=>{ sx+=(i%W)+.5; sz+=((i/W)|0)+.5; mh=Math.max(mh,blockH(i)); });
-      drawTag(ctx, ZONES[k].name, proj(sx/best.length, mh+.55, sz/best.length), dpr);
+    for (let d=0; d<D; d++){
+      if (D>1) { const p = proj(-0.6, base(d)+.2, -0.6); drawTag(ctx, `Deck ${d+1}`, p, dpr); }
+      for (const k of [...ZK, 'exit']){
+        const seen = new Set(); let best = [];
+        for (let l=0;l<N;l++){ const i = d*N+l; if (!mask[i] || cells[i]!==k || seen.has(i)) continue;
+          const comp=[i]; seen.add(i);
+          for (let h=0;h<comp.length;h++) for (const j of nbrs4(comp[h])) if (cells[j]===k && !seen.has(j)){ seen.add(j); comp.push(j); }
+          if (k==='exit'){ const p = proj(ix(i)+.5, base(d)+blockH(i)+.45, iy(i)+.5); drawTag(ctx, 'Hatch', p, dpr); }
+          else if (comp.length > best.length) best = comp; }
+        if (k==='exit' || !best.length) continue;
+        let sx=0, sz=0, mh=0; best.forEach(i=>{ sx+=ix(i)+.5; sz+=iy(i)+.5; mh=Math.max(mh,blockH(i)); });
+        drawTag(ctx, ZONES[k].name, proj(sx/best.length, base(d)+mh+.55, sz/best.length), dpr);
+      }
     }
   }
 }
@@ -1419,6 +1647,7 @@ function drawTag(ctx, text, p, dpr){
   cv.addEventListener('wheel', e => { e.preventDefault(); v3.zoom = clamp(v3.zoom * (e.deltaY < 0 ? 1.1 : 1/1.1), .5, 3); draw3d(); }, {passive:false});
   $('#v3spin').onclick = () => { v3.spin = !v3.spin; $('#v3spin').textContent = v3.spin ? '⏸ Stop rotating' : '▶ Rotate'; };
   $('#v3reset').onclick = () => { Object.assign(v3, {yaw:-.65, pitch:.75, zoom:1}); draw3d(); };
+  $('#v3spread').onclick = () => { v3.spread = !v3.spread; $('#v3spread').textContent = v3.spread ? 'Decks: spread apart' : 'Decks: stacked'; draw3d(); };
   $('#v3labels').onclick = () => { v3.labels = !v3.labels; $('#v3labels').textContent = 'Labels: ' + (v3.labels ? 'on' : 'off'); draw3d(); };
   $('#v3mode').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; v3.mode = b.dataset.m;
     [...$('#v3mode').children].forEach(x=>x.classList.toggle('on', x===b)); renderGrid(); draw3d(); });
@@ -1427,8 +1656,8 @@ function drawTag(ctx, text, p, dpr){
  
 /* ===================== TUTORIAL ===================== */
 const TOUR = [
-  {sel:'#cardMission', title:'1. Describe the mission', body:'Set the crew size, mission length and habitat shape. The rules (living space, zone sizes, noise limits) change automatically, so try the preset buttons.'},
-  {sel:'#cardTools',   title:'2. Pick a zone', body:'Choose a zone (or press keys 1–7). <b>Hatch</b> places an emergency exit on the outer wall, and the eraser makes open corridor. Each zone shows how many m² you have versus how many are needed.'},
+  {sel:'#cardMission', title:'1. Describe the mission', body:'Set the crew size, mission length, habitat shape and number of <b>decks</b> (floors). The rules (living space, zone sizes, noise limits) change automatically, so try the preset buttons.'},
+  {sel:'#cardTools',   title:'2. Pick a zone', body:'Choose a zone (or press keys 1–7). <b>Hatch</b> places an emergency exit on the outer wall, <b>Ladder</b> connects decks, and the eraser makes open corridor. Each zone shows how many m² you have versus how many are needed.'},
   {sel:'#gridwrap',    title:'3. Paint the layout', body:'Drag on the grid to paint and right-click to erase. Switch to <b>Noise map</b> or <b>Exit paths</b> above the grid to see loud spots and escape routes, or <b>🧊 3D view</b> to see your habitat in 3D.'},
   {sel:'#cardScore',   title:'4. Read your score', body:'The score updates live and shows the cost estimate under the grid. Under <b>Top improvements</b>, click a suggestion to highlight the cells it is about.'},
   {sel:'#btnFix',      title:'5. Auto-fix & compare', body:'Stuck? <b>✨ Auto-fix</b> improves the layout step by step and lists every change (Undo restores it). Save versions under <b>Save &amp; compare</b> to compare them side by side.'},
