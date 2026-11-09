@@ -1,4 +1,7 @@
+Claude
 
+
+Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,7 +102,26 @@ button.fix{background:linear-gradient(90deg,#2bb673,#1f9d8a);border-color:#2bb67
 .ck{display:flex;gap:8px;padding:6px 4px;border-bottom:1px solid var(--line);cursor:pointer;font-size:12px}
 .ck:hover{background:var(--panel2)}
 .ck .ic{flex:none;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#111}
-.ic.pass{background:var(--good)}.ic.warn{background:var(--warn)}.ic.fail{background:var(--bad)}
+.ic.pass{background:var(--good)}.ic.warn{background:var(--warn)}.ic.fail{background:var(--bad)}.ic.na{background:#3a4258;color:#cfd6e6}
+.sft .ck{cursor:default}.sft .ck .t{font-weight:600}.sft .fixl{margin-top:3px;color:#ffd27a}
+.sft .hrow{display:flex;align-items:center;gap:6px;padding:4px 0 4px 26px;font-size:12px;border-bottom:1px dashed var(--line)}
+.sft .hrow .hx{flex:1;min-width:0}.sft button.small{margin-top:5px}
+.ovnote{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 8px;padding:6px 10px;border-radius:8px;background:rgba(90,170,255,.12);border:1px solid rgba(90,170,255,.4);font-size:12px}
+.ovnote .spacer{flex:1}
+#report{display:none}
+@media print{
+  html.printing,body.printing{background:#fff !important}
+  body.printing > *:not(#report){display:none !important}
+  body.printing #report{display:block}
+}
+#report{color:#111;background:#fff;font:12px/1.45 Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#report h1{font-size:20px;margin:0 0 2px;color:#13254f}#report h2{font-size:14px;margin:14px 0 6px;color:#13254f;border-bottom:1.5px solid #c9d5f2;padding-bottom:3px;break-after:avoid}
+#report .sub{color:#5b6475;margin-bottom:10px}#report table{width:100%;border-collapse:collapse;margin:4px 0}#report td,#report th{border:1px solid #d5dbe8;padding:4px 6px;text-align:left;vertical-align:top}
+#report th{background:#eef3fd}#report tr{break-inside:avoid}#report .big{font-size:34px;font-weight:800}#report .pf{font-weight:700}
+#report .pass{color:#1e8a50}#report .warn{color:#b07a12}#report .fail{color:#c22d3d}#report .na{color:#5b6475}
+#report .top{display:flex;gap:18px;align-items:center}#report img{max-width:100%;max-height:105mm;border:1px solid #d5dbe8;border-radius:4px;display:block;margin:0 auto}
+#report .lg span{display:inline-block;margin:2px 10px 2px 0}#report .lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px;border:1px solid #999}
+#report .foot{margin-top:14px;color:#5b6475;font-size:10.5px}
 .ck .d{color:var(--muted)}
 .saved{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:10px}
 .sv{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px}
@@ -248,6 +270,7 @@ details p,details li{font-size:12px;color:#c3cad9}
           <button data-o="3d">🧊 3D view</button>
         </div>
       </div>
+      <div class="ovnote" id="ovnote" style="display:none"></div>
       <div class="seg decktabs" id="deckTabs" style="display:none"></div>
       <div class="gridwrap" id="gridwrap"><div class="grid" id="grid"></div></div>
       <div class="view3d" id="view3d" style="display:none">
@@ -277,6 +300,8 @@ details p,details li{font-size:12px;color:#c3cad9}
         <button class="primary" id="btnSave">Save layout</button>
         <button id="btnExport">Export JSON</button>
         <button id="btnImport">Import JSON</button>
+        <button id="btnShare" title="Copy a link that opens this exact layout">🔗 Share link</button>
+        <button id="btnReport" title="Download a PDF report of this layout">📄 PDF report</button>
       </div>
       <div class="saved" id="saved"></div>
       <div id="compare"></div>
@@ -303,6 +328,10 @@ details p,details li{font-size:12px;color:#c3cad9}
       <div id="fixlog"></div>
       <ol class="sug" id="sug"></ol>
     </div>
+    <div class="card sft" id="cardSafety">
+      <h2>Extra safety tests <span style="text-transform:none;letter-spacing:0">(not part of the score)</span></h2>
+      <div id="safety"></div>
+    </div>
     <div class="card checks">
       <h2>All checks</h2>
       <div id="checks"></div>
@@ -322,6 +351,7 @@ details p,details li{font-size:12px;color:#c3cad9}
   </div>
 </div></div>
 <div class="toast" id="toast"></div>
+<div id="report"></div>
 <div id="errbar" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:90;background:#3a1218;border:1px solid var(--bad);color:#ffd6db;border-radius:10px;padding:10px 12px;font-size:12px"></div>
 <div class="tourpop" id="tourpop" role="dialog" aria-live="polite">
   <div class="tstep" id="tStep"></div>
@@ -900,7 +930,8 @@ function heat(db){ // 35 → 75 dB : green → yellow → red
  
 function renderGrid(){
   const cs = parseInt(getComputedStyle($('#grid')).getPropertyValue('--cs')) || 24;
-  const pathSet = new Set(overlay==='egress' ? A.worstPath : []), off = curDeck*G.N;
+  const bt = overlay==='block' ? SAFE.hatch.tests.find(t => t.hatch===blockSel) : null, newTrap = new Set(bt ? bt.trapped : []);
+  const pathSet = new Set(overlay==='egress' ? A.worstPath : overlay==='rad' && SAFE.rad.best>=0 ? [SAFE.rad.best] : []), off = curDeck*G.N;
   for (let li=0;li<cellEls.length;li++){
     const i = off + li, el = cellEls[li]; if (!G.mask[i]) continue;
     const v = S.cells[i], ov = el.firstChild, tx = el.lastChild;
@@ -919,12 +950,28 @@ function renderGrid(){
       else if (d>A.R.maxEgress) ov.style.background = 'rgba(255,150,40,.75)';
       else ov.style.background = `rgba(60,170,255,${.15 + .6*d/Math.max(1,A.R.maxEgress)})`;
       if (cs>=22 && v!=='exit' && v!=='storage' && v!=='ladder') t = d<0 ? '✕' : Math.round(d);
+    } else if (overlay==='rad'){
+      const k = SAFE.rad.shield[i];
+      if (v==='storage') ov.style.background = 'rgba(0,0,0,.45)';
+      else if (v==='exit' || v==='ladder') ov.style.background = '';
+      else if (k>=0) ov.style.background = ['rgba(235,45,65,.92)','rgba(245,140,40,.92)','rgba(230,190,40,.92)','rgba(50,190,115,.92)','rgba(30,165,95,.95)'][k];
+      if (cs>=22 && k>=0 && v!=='exit' && v!=='ladder') t = v==='sleep' ? '🛏'+k : k;
+    } else if (overlay==='block' && bt){
+      const d = bt.dist[i];
+      if (i===bt.hatch){ ov.style.background = 'rgba(0,0,0,.75)'; t = '⛔'; }
+      else if (v==='storage') ov.style.background = 'rgba(0,0,0,.45)';
+      else if (newTrap.has(i) || (v!=='exit' && !isFinite(d))) ov.style.background = 'rgba(255,40,60,.85)';
+      else if (d>A.R.maxEgress) ov.style.background = 'rgba(255,150,40,.75)';
+      else ov.style.background = `rgba(60,170,255,${.15 + .6*d/Math.max(1,A.R.maxEgress)})`;
+      if (cs>=22 && i!==bt.hatch && v!=='exit' && v!=='storage' && v!=='ladder') t = isFinite(d) ? Math.round(d) : '✕';
     } else ov.style.background = '';
     tx.textContent = t;
   }
   const lg = $('#legend');
   const lgMode = overlay==='3d' ? (v3.mode==='zones' ? 'none' : v3.mode) : overlay;
   if (lgMode==='noise') lg.innerHTML = `<span>35 dB</span><div class="bar" style="background:linear-gradient(90deg,${heat(35)},${heat(55)},${heat(75)})"></div><span>75 dB</span><span>· NASA-STD-3001 limits: sleep ${A.R.noiseLimit.sleep} dBA (${A.R.noiseLabel.sleep}), medical/work ${A.R.noiseLimit.work} dBA (NC-50), hazard ${A.R.noiseHazard} dBA · storage absorbs sound</span>`;
+  else if (lgMode==='rad') lg.innerHTML = `<span>Number = sides (of 4) with storage between this box and the hull:</span><span style="color:#ff5c6c">■ 0</span><span style="color:#ff9628">■ 1</span><span style="color:#ffd73c">■ 2</span><span style="color:#3ddc84">■ 3–4</span><span>🛏 sleep box · □ outlined: best storm-shelter spot</span>`;
+  else if (lgMode==='block') lg.innerHTML = `<span style="color:#5aaaff">■ distance to the other exits</span><span style="color:#ff9628">■ too far (&gt;${A.R.maxEgress} m)</span><span style="color:#ff283c">■ trapped while this hatch is blocked</span><span>⛔ blocked hatch</span>`;
   else if (lgMode==='egress') lg.innerHTML = `<span style="color:#5aaaff">■ distance to nearest hatch</span><span style="color:#ff9628">■ too far (&gt;${A.R.maxEgress} m)</span><span style="color:#ff283c">■ trapped (no way to any exit)</span><span style="color:#ff6b7a">▨ storage nobody can reach</span><span>□ outlined: longest escape route</span>`;
   else lg.innerHTML = ZK.map(k=>`<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:${ZONES[k].color}"></span> ${ZONES[k].name}</span>`).join('') + `<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:#f2f4f8"></span> Hatch</span>` +
     (G.D>1 ? `<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:${LADDER_COLOR}"></span> Ladder (▲ up · ▼ down)</span>` : '') +
@@ -1040,13 +1087,194 @@ function highlight(list){
 }
  
 function refresh(){
-  A = analyze();
-  renderGrid(); renderDeckTabs(); renderTools(); renderToolHint(); renderRules(); renderScore(); renderStats();
+  A = analyze(); SAFE = safetyTests();
+  if (overlay==='block' && !SAFE.hatch.tests.some(t => t.hatch===blockSel)) setOverlay('egress');
+  renderGrid(); renderDeckTabs(); renderSafety(); renderTools(); renderToolHint(); renderRules(); renderScore(); renderStats();
   $('#v3spread').style.display = G.D > 1 ? '' : 'none';
   if (overlay === '3d') draw3d();
 }
 let rafPending = false;
 function refreshSoon(){ if (rafPending) return; rafPending = true; requestAnimationFrame(()=>{ rafPending=false; refresh(); }); }
+ 
+ 
+/* ===================== EXTRA SAFETY TESTS (shown separately, they do not change the score) ===================== */
+// 1) Radiation storm shelter. In a solar storm the crew shelters behind dense mass: water, food and supplies
+//    (NASA's Orion plan uses its stowage bags this way). We model it simply: from a box, look in each of the
+//    4 wall directions to the hull. That side is shielded if at least one storage box is in the way.
+//    A sleep box is protected when at least 2 of its 4 sides are shielded (design rule).
+// 2) Blocked hatch. A fire or leak can block a hatch. We block each hatch in turn and re-run the escape search
+//    with the other hatches only: can everyone still get out, and how far do they walk?
+const RAD_SIDES_NEEDED = 2, RAD_PASS = .75, RAD_WARN = .5;
+let SAFE = null, blockSel = -1;
+function shieldOf(i){
+  const d = idk(i), x = ix(i), y = iy(i); let n = 0;
+  for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+    let nx = x+dx, ny = y+dy;
+    while (nx>=0 && ny>=0 && nx<G.W && ny<G.H && G.mask[d*G.N + ny*G.W + nx]){
+      if (S.cells[d*G.N + ny*G.W + nx]==='storage'){ n++; break; }
+      nx += dx; ny += dy;
+    }
+  }
+  return n;
+}
+function safetyTests(){
+  const n = G.D*G.N, shield = new Int8Array(n).fill(-1), sleep = [];
+  for (let i=0;i<n;i++){ if (!G.mask[i] || S.cells[i]==='storage') continue; shield[i] = shieldOf(i); if (S.cells[i]==='sleep') sleep.push(i); }
+  const prot = sleep.filter(i => shield[i] >= RAD_SIDES_NEEDED), weak = sleep.filter(i => shield[i] < RAD_SIDES_NEEDED);
+  const frac = sleep.length ? prot.length/sleep.length : 0;
+  let best = -1;   // best place to gather in a storm: most shielded walkable box that is not cut off
+  for (let i=0;i<n;i++){ const v = S.cells[i];
+    if (shield[i]<0 || v==='exit' || v==='ladder' || A.dist[i]<0) continue;
+    if (best<0 || shield[i]>shield[best] || (shield[i]===shield[best] && A.dist[i]<A.dist[best])) best = i; }
+  const needed = S.days > 30;
+  const radStatus = !sleep.length ? 'na' : frac>=RAD_PASS ? 'pass' : !needed ? 'na' : frac>=RAD_WARN ? 'warn' : 'fail';
+  const rad = {shield, sleep, prot, weak, frac, best, needed, status: radStatus};
+ 
+  const walk = i => G.mask[i] && S.cells[i]!=='storage';
+  const people = []; for (let i=0;i<n;i++) if (walk(i) && S.cells[i]!=='exit' && A.dist[i]>=0) people.push(i);   // boxes that can escape normally
+  const tests = A.exits.map(h => {
+    const others = A.exits.filter(e => e!==h);
+    const dist = others.length ? egressSearch(others, i => walk(i) && i!==h).dist : new Float64Array(n).fill(Infinity);
+    const trapped = people.filter(i => !isFinite(dist[i]));
+    let longest = 0; for (const i of people) if (isFinite(dist[i])) longest = Math.max(longest, dist[i]);
+    const status = trapped.length ? 'fail' : longest > A.R.maxEgress ? 'warn' : 'pass';
+    return {hatch:h, dist, trapped, longest:Math.round(longest), status};
+  });
+  const worst = tests.some(t=>t.status==='fail') ? 'fail' : tests.some(t=>t.status==='warn') ? 'warn' : 'pass';
+  const hatch = {tests, status: !A.exits.length ? 'na' : A.exits.length===1 ? (A.R.exitsRequired>1 ? 'fail' : 'warn') : worst};
+  return {rad, hatch};
+}
+const icon = st => `<span class="ic ${st}">${st==='pass'?'✓':st==='warn'?'!':st==='fail'?'✕':'i'}</span>`;
+function radText(r){
+  if (!r.sleep.length) return {t:'No sleep boxes yet', d:'Place the sleep quarters first, then this test checks how well they are shielded.', fix:''};
+  const t = `${r.prot.length} of ${r.sleep.length} sleep boxes protected (${Math.round(r.frac*100)}%)`;
+  const d = `A sleep box is protected when storage (water, food, supplies) sits between it and the hull on at least ${RAD_SIDES_NEEDED} of its 4 sides. `+
+    (r.needed ? `Needed for missions over 30 days: pass at ${RAD_PASS*100}% or more, warning from ${RAD_WARN*100}%.` : 'Optional for missions of 30 days or less, which stay short enough to avoid most storm risk.');
+  const fix = r.frac>=RAD_PASS ? '' : 'Line the outer wall next to the sleep area with storage, or move sleep to the middle with storage around it.';
+  return {t, d, fix};
+}
+function renderSafety(){
+  const r = SAFE.rad, h = SAFE.hatch, rt = radText(r);
+  const best = r.best>=0 ? `Best storm-shelter spot: <b>${xy(r.best)}</b>, shielded on ${r.shield[r.best]} of 4 sides.` : '';
+  let hx;
+  if (!A.exits.length) hx = {t:'No hatch to test', d:'Add a hatch first.'};
+  else if (A.exits.length===1) hx = {t:'Only one hatch: if it is blocked, everyone is trapped',
+      d: A.R.exitsRequired>1 ? `This mission needs ${A.R.exitsRequired} exits, so a single fire or leak at the hatch would trap the whole crew.` : 'Allowed for a small crew on a short mission, but a second hatch would remove this risk.',
+      fix:'Add a second hatch on the far side of the habitat.'};
+  else { const bad = h.tests.filter(t=>t.status==='fail').length, far = h.tests.filter(t=>t.status==='warn').length;
+    hx = {t: bad ? `${bad} of ${h.tests.length} hatches would trap crew if blocked` : far ? `Everyone still escapes, but some routes get too long` : `Any one hatch can be blocked and everyone still escapes`,
+      d:`We block each hatch in turn (fire, leak or jammed door) and check that the crew can still reach another exit within ${A.R.maxEgress} m.`,
+      fix: bad ? 'Add a hatch, or open a path so every area can reach two different hatches.' : far ? 'Move a hatch, or add one, so the backup route is shorter.' : ''}; }
+  const rows = h.tests.map(t => `<div class="hrow">${icon(t.status)}<div class="hx">Block hatch at ${xy(t.hatch)} → ${t.trapped.length ? `<b style="color:var(--bad)">${t.trapped.length} m² trapped</b>` : `longest walk ${t.longest} m${t.longest>A.R.maxEgress?' (too far)':''}`}</div>
+      <button class="small" data-block="${t.hatch}">${overlay==='block' && blockSel===t.hatch ? 'Showing' : 'Show'}</button></div>`).join('');
+  $('#safety').innerHTML =
+    `<div class="ck">${icon(r.status)}<div><div class="t">☢️ Radiation storm shelter</div><div>${rt.t}</div><div class="d">${rt.d}</div>${best?`<div class="d">${best}</div>`:''}
+      ${rt.fix?`<div class="d fixl">💡 ${rt.fix}</div>`:''}${r.sleep.length?`<button class="small" data-rad>${overlay==='rad'?'Showing shielding':'Show shielding on grid'}</button>`:''}</div></div>
+     <div class="ck">${icon(h.status)}<div><div class="t">🚪 Blocked-hatch emergency test</div><div>${hx.t}</div><div class="d">${hx.d}</div>${hx.fix?`<div class="d fixl">💡 ${hx.fix}</div>`:''}</div></div>${rows}`;
+}
+$('#safety').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.hasAttribute('data-rad')){ setOverlay('rad'); if (SAFE.rad.weak.length) highlight(SAFE.rad.weak); }
+  else if (b.dataset.block){ blockSel = +b.dataset.block; setOverlay('block'); const t = SAFE.hatch.tests.find(t=>t.hatch===blockSel); highlight(t && t.trapped.length ? t.trapped : [blockSel]); }
+  renderSafety();
+});
+function renderOvNote(){
+  const box = $('#ovnote');
+  if (overlay!=='rad' && overlay!=='block'){ box.style.display = 'none'; return; }
+  box.style.display = '';
+  box.innerHTML = '<span>' + (overlay==='rad' ? '☢️ <b>Radiation shielding view</b>: how many sides of each box have storage between it and the hull.'
+                                   : `🚪 <b>Blocked-hatch view</b>: hatch at ${xy(blockSel)} is blocked; colours show the walk to the other exits.`) + '</span>' +
+    '<span class="spacer"></span><button class="small" data-ovback>✕ Back to zones</button>';
+  box.querySelector('[data-ovback]').onclick = () => { setOverlay('none'); renderSafety(); };
+}
+ 
+/* ===================== SHARE BY LINK ===================== */
+// The whole layout is packed into the link after '#': mission, shape, size and every box (run-length coded, e.g. "S4" = 4 sleep boxes).
+const CODE_OF = Object.fromEntries(Object.entries({S:'sleep', E:'exercise', H:'hygiene', F:'food', W:'work', M:'medical', T:'storage', X:'exit', L:'ladder'}).map(([k,v])=>[v,k]));
+function encodeCells(cells){
+  let out = '', i = 0; const code = v => v && CODE_OF[v] ? CODE_OF[v] : '.';
+  while (i < cells.length){ const c = code(cells[i]); let j = i+1; while (j < cells.length && code(cells[j])===c) j++; out += c + (j-i>1 ? j-i : ''); i = j; }
+  return out;
+}
+function decodeCells(str){
+  const out = [], re = /([.SEHFWMTXL])(\d*)/g; let m;
+  while ((m = re.exec(str))){ const v = m[1]==='.' ? null : EX_CODE[m[1]], k = m[2] ? Math.min(+m[2], 20000) : 1; for (let q=0;q<k;q++) out.push(v); if (out.length > 20000) break; }
+  return out;
+}
+function shareLink(){
+  const p = new URLSearchParams({c:S.crew, d:S.days, s:S.shape, a:S.a, b:S.b, h:S.height, k:S.decks||1, t:S.structure||'rigid', g:encodeCells(S.cells)});
+  const nm = $('#saveName').value.trim(); if (nm) p.set('n', nm);
+  return location.href.split('#')[0] + '#' + p.toString();
+}
+function loadFromHash(){
+  const h = location.hash.slice(1); if (!h || !h.includes('g=')) return false;
+  try {
+    const p = new URLSearchParams(h);
+    const L = {crew:+p.get('c'), days:+p.get('d'), shape:p.get('s'), a:+p.get('a'), b:+p.get('b'), height:+p.get('h'), decks:+p.get('k')||1,
+               structure: p.get('t')==='inflatable' ? 'inflatable' : 'rigid', cells: decodeCells(p.get('g')||'')};
+    if (!validLayout(L)) throw new Error('bad layout');
+    pushHistory();
+    S = {crew:clamp(Math.round(L.crew),1,12), days:clamp(Math.round(L.days),1,1500), shape:L.shape, a:L.a, b:L.b, height:L.height, structure:L.structure, decks:L.decks, cells:[]};
+    validateGeo(); G = geometry(S);
+    S.cells = Array.from({length:G.D*G.N}, (_,i) => G.mask[i] && L.cells[i] ? L.cells[i] : null);
+    cleanupLadders();
+    if (p.get('n')) $('#saveName').value = p.get('n').slice(0,60);
+    curDeck = 0; syncInputs(); buildGrid(); refresh();
+    try { window.history.replaceState(null, '', location.href.split('#')[0]); } catch(e){}
+    toast(`Loaded layout from link${p.get('n') ? ': "'+p.get('n').slice(0,40)+'"' : ''}`);
+    return true;
+  } catch(e){ console.error(e); toast('That link does not contain a valid layout'); return false; }
+}
+window.addEventListener('hashchange', loadFromHash);
+$('#btnShare').onclick = async () => {
+  const url = shareLink();
+  openModal('share'); $('#mText').value = url;
+  try { await navigator.clipboard.writeText(url); toast('Link copied: paste it anywhere to share this layout'); } catch(e){}
+};
+ 
+/* ===================== PDF REPORT ===================== */
+// Builds a clean white report and opens the print window; choose "Save as PDF" there.
+function reportHTML(){
+  const name = $('#saveName').value.trim() || 'Untitled layout', st = A.stats, sh = SHAPES[S.shape];
+  const L = {...S, cells:[...S.cells]}, cv = document.createElement('canvas'); drawThumb(cv, L, 680);
+  const cls = st => st==='pass'?'pass':st==='warn'?'warn':st==='fail'?'fail':'na', word = st => ({pass:'Pass', warn:'Warning', fail:'Fail', na:'Info'})[st];
+  const sizeTxt = `${S.a} m${['rect','lshape','ring'].includes(S.shape) ? ' × '+S.b+' m' : ''}`;
+  const rt = radText(SAFE.rad), hs = SAFE.hatch;
+  const row = (k,v) => `<tr><th style="width:38%">${k}</th><td>${v}</td></tr>`;
+  return `<h1>Habitat layout report: ${esc(name)}</h1>
+  <div class="sub">Habitat Layout Creator · SW-4 · ${new Date().toLocaleString()}</div>
+  <div class="top"><div><div class="big" style="color:${A.total>=75?'#1e8a50':A.total>=50?'#b07a12':'#c22d3d'}">${A.total}/100</div><div class="pf">Grade ${A.grade}</div></div>
+    <table style="flex:1">${row('Mission', `${S.crew} crew · ${S.days} days`)}${row('Habitat', `${sh.name} · ${sizeTxt} · ${S.decks||1} deck${(S.decks||1)>1?'s':''} · ${S.height} m deck height`)}${row('Structure', S.structure==='inflatable'?'Inflatable (B330-style)':'Rigid module (ISS-style)')}</table></div>
+  ${A.caps.length ? `<p class="fail"><b>Score capped at ${Math.min(...A.caps.map(c=>c.cap))}</b> (would be ${A.raw}) because of: ${A.caps.map(c=>c.why).join('; ')}.</p>` : ''}
+  <h2>Layout</h2>
+  <img src="${cv.toDataURL('image/png')}" alt="Layout plan">
+  ${(S.decks||1)>1 ? `<div class="sub">Decks from left to right: ${Array.from({length:S.decks},(_,d)=>'Deck '+(d+1)).join(' · ')}</div>` : ''}
+  <div class="lg">${ZK.map(k=>`<span><i style="background:${ZONES[k].color}"></i>${ZONES[k].name}</span>`).join('')}<span><i style="background:#f2f4f8"></i>Hatch</span>${(S.decks||1)>1?`<span><i style="background:${LADDER_COLOR}"></i>Ladder</span>`:''}</div>
+  <h2>Score breakdown</h2>
+  <table><tr><th>Check</th><th>Points</th></tr>${Object.keys(WEIGHTS).map(k=>`<tr><td>${CAT_NAMES[k]}</td><td>${Math.round(A.cats[k]*WEIGHTS[k])} / ${WEIGHTS[k]}</td></tr>`).join('')}</table>
+  <h2>Key numbers</h2>
+  <table>${row('Living volume (storage not counted)', `${fmt(st.nhv)} m³ · ${fmt(st.perCrew)} m³ per person (needs ${A.R.volPerCrew} m³)`)}
+    ${row('Walkway / circulation space', pct(st.circ))}${row('Longest escape route', st.maxEgress!=null ? `${st.maxEgress} m (limit ${A.R.maxEgress} m)` : '—')}
+    ${row('Exits', `${st.exits} (needs ${A.R.exitsRequired})`)}${row('Loudest sleep box', st.sleepNoise!=null ? `${Math.round(st.sleepNoise)} dBA (limit ${A.R.noiseLimit.sleep} dBA)` : '—')}
+    ${row('Hull volume · structure mass', `${fmt(st.totalVol)} m³ · ${tonnes(st.mass)}`)}${row('Launch cost estimate', money(st.launch))}</table>
+  <h2>Top improvements</h2>
+  ${A.suggestions.length ? `<ol>${A.suggestions.slice(0,8).map(s=>`<li><b>+${Math.max(1,Math.round(s.impact))} pts:</b> ${s.fix} <span class="na">(${s.title})</span></li>`).join('')}</ol>` : '<p class="pass">Nothing to improve: this layout passes every check.</p>'}
+  <h2>All checks</h2>
+  <table><tr><th style="width:12%">Result</th><th style="width:16%">Area</th><th>Check</th></tr>${A.checks.map(c=>`<tr><td class="${cls(c.status)} pf">${word(c.status)}</td><td>${CAT_NAMES[c.cat]}</td><td><b>${c.title}</b><br><span class="na">${c.detail}</span></td></tr>`).join('')}</table>
+  <h2>Extra safety tests (not part of the score)</h2>
+  <table><tr><td class="${cls(SAFE.rad.status)} pf" style="width:12%">${word(SAFE.rad.status)}</td><td><b>Radiation storm shelter:</b> ${rt.t}<br><span class="na">${rt.d}</span>${SAFE.rad.best>=0?`<br>Best shelter spot: ${xy(SAFE.rad.best)} (${SAFE.rad.shield[SAFE.rad.best]} of 4 sides shielded).`:''}${rt.fix?`<br>Tip: ${rt.fix}`:''}</td></tr>
+    <tr><td class="${cls(hs.status)} pf">${word(hs.status)}</td><td><b>Blocked-hatch test:</b> ${hs.tests.length ? hs.tests.map(t=>`hatch at ${xy(t.hatch)} blocked → ${t.trapped.length ? t.trapped.length+' m² trapped' : 'longest walk '+t.longest+' m'}`).join('; ') : 'no hatch'}${A.exits.length===1?' (only one hatch: if it is blocked, everyone is trapped)':''}</td></tr></table>
+  <div class="foot">Rules: NASA Human Research Program 2014 (living volume, zone sizes) · Rucker &amp; Thompson 2012 · NASA-STD-3001 Vol. 2 (layout, noise limits) · NASA OCHMO-TB-035 (acoustics). Exit count, escape distance and radiation-shelter rules are design rules. Cost: ISS Destiny / Bigelow B330 mass per m³ × Falcon Heavy price per kg.</div>`;
+}
+$('#btnReport').onclick = () => {
+  try {
+    $('#report').innerHTML = reportHTML();
+    document.body.classList.add('printing'); document.documentElement.classList.add('printing');
+    toast('In the print window, choose "Save as PDF"');
+    setTimeout(() => { window.print(); }, 60);
+  } catch(e){ console.error(e); document.body.classList.remove('printing'); document.documentElement.classList.remove('printing'); toast('Could not build the report'); }
+};
+window.addEventListener('afterprint', () => { document.body.classList.remove('printing'); document.documentElement.classList.remove('printing'); });
  
 /* ===================== EDITING ===================== */
 function pushHistory(){ history.push(JSON.stringify(S)); if (history.length>80) history.shift(); }
@@ -1099,7 +1327,8 @@ window.addEventListener('pointermove', e => {
       const x=li%G.W, y=(li/G.W)|0, v=S.cells[i];
       const d = A.dist[i];
       $('#status').textContent = `${G.D>1?`Deck ${curDeck+1} · `:''}(${x}, ${y}) · ${v==='exit'?'Hatch':v==='ladder'?'Ladder':v?ZONES[v].name:'Open / corridor'} · noise ${Math.round(A.noiseMap[i])} dB · ceiling ${fmt(G.heights[i])} m · ` +
-        (v==='storage' ? 'not walkable' : d<0 ? 'trapped: no way to any exit' : `${Math.round(d)} m to exit`);
+        (v==='storage' ? 'not walkable' : d<0 ? 'trapped: no way to any exit' : `${Math.round(d)} m to exit`) +
+        (overlay==='rad' && SAFE.rad.shield[i]>=0 ? ` · storage shields ${SAFE.rad.shield[i]} of 4 sides` : '');
     }
     if (painting && tool!=='exit' && tool!=='ladder' && li !== lastPainted){ lastPainted = li; paintAt(lastPainted, eraseDrag); refreshSoon(); }
   }
@@ -1108,13 +1337,15 @@ window.addEventListener('pointerup', () => { painting = false; lastPainted = -1;
  
 $('#tools').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b){ tool = b.dataset.t; renderTools(); } });
 $('#brush').addEventListener('click', e => { const b = e.target.closest('[data-b]'); if (!b) return; brush = +b.dataset.b; [...$('#brush').children].forEach(x=>x.classList.toggle('on', x===b)); });
-$('#overlay').addEventListener('click', e => { const b = e.target.closest('[data-o]'); if (!b) return;
-  overlay = b.dataset.o; [...$('#overlay').children].forEach(x=>x.classList.toggle('on', x===b));
+$('#overlay').addEventListener('click', e => { const b = e.target.closest('[data-o]'); if (b) setOverlay(b.dataset.o); });
+function setOverlay(o){
+  overlay = o; [...$('#overlay').children].forEach(x=>x.classList.toggle('on', x.dataset.o===o));
+  renderOvNote();
   const is3d = overlay === '3d';
   $('#gridwrap').style.display = is3d ? 'none' : '';
   $('#view3d').style.display = is3d ? '' : 'none';
   if (is3d){ v3.spin = true; $('#v3spin').textContent = '⏸ Stop rotating'; resize3d(); loop3d(); }
-  renderGrid(); });
+  renderGrid(); }
 $('#sug').addEventListener('click', e => { const li = e.target.closest('[data-s]'); if (li) highlight(A.suggestions[+li.dataset.s].cells); });
 $('#checks').addEventListener('click', e => { const d = e.target.closest('[data-c]'); if (d) highlight(A.checks[+d.dataset.c].cells); });
  
@@ -1317,19 +1548,17 @@ function showBeforeAfter(L0, A0, L1, A1, nChanges){
 $('#btnFix').onclick = autoFix;
  
 /* ===================== EXAMPLES ===================== */
+// Fill S.cells from text rows (one array of rows per deck), using the letter codes in EX_CODE.
+function fillRows(decks){ decks.forEach((rows, d) => rows.forEach((row, y) => [...row].forEach((ch, x) => {
+  const i = d*G.N + y*G.W + x; if (EX_CODE[ch] && G.mask[i]) S.cells[i] = EX_CODE[ch]; }))); }
 function loadExample(bad){
   pushHistory();
   S = {crew:6, days:180, shape:'rect', a:12, b:8, height:2.5, structure:'rigid', decks:1, cells:[]};
   applyGeometry(null); curDeck = 0;
   const R = (k,x0,y0,x1,y1) => { for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) S.cells[y*G.W+x]=k; };
   if (!bad){
-    R('sleep',0,0,4,2); R('storage',5,0,5,2); R('work',6,0,8,2);
-    R('storage',4,2,4,2);                                    // keep the bed nearest the gym out of the NC-40 zone
-    R('storage',9,0,11,0); R('storage',9,2,11,2);            // two shelf rows with a walkway between
-    R('storage',0,4,0,7); R('storage',4,7,8,7);              // single-depth racks along the walls
-    R('medical',2,4,3,5); R('hygiene',2,6,3,7);
-    R('food',7,4,10,5); R('exercise',9,6,11,7); R('exercise',11,5,11,5);
-    R('exit',0,3,0,3); R('exit',11,3,11,3);
+    // each row of beds has a storage rack at both ends, so every bed is shielded on 2 sides (radiation storm shelter)
+    fillRows([["TSSSSSTWWWTT", "TSSSSSTWWW..", "TSSSSTTWWWTT", "X..........X", "T.MM...FFFF.", "T.MM...FFFFE", "T.HH.....EEE", "T.HH.TTTTEEE"]]);
   } else {
     R('sleep',0,0,3,2); R('exercise',4,0,5,2); R('work',6,0,9,1);
     R('food',6,4,8,5); R('hygiene',9,4,10,5);
@@ -1346,15 +1575,10 @@ function loadExample2(bad){
   S = {crew:6, days:180, shape:'rect', a:10, b:5, height:2.5, structure:'rigid', decks:2, cells:[]};
   applyGeometry(null); curDeck = 0;
   const R = (d,k,x0,y0,x1,y1) => { for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) S.cells[d*G.N + y*G.W + x]=k; };
-  // deck 1 (ground): galley, hygiene, gym, storage, both main hatches
-  R(0,'food',0,0,3,1); R(0,'storage',4,0,7,0); R(0,'hygiene',8,0,9,1);   // one shelf row, walkway in front
-  R(0,'storage',1,4,3,4); R(0,'exercise',5,3,8,4); R(0,'storage',9,3,9,4);
-  R(0,'exit',0,2,0,2); R(0,'exit',9,2,9,2);
-  // deck 2 (upper): crew quarters, medical bay, workstations, a docking-port hatch
-  R(1,'medical',0,0,1,1); R(1,'sleep',2,0,9,1); R(1,'work',5,3,9,4);
-  R(1,'exit',9,2,9,2);
-  // ladder between the decks, far from the gym so its noise doesn't climb up
-  R(0,'ladder',0,4,0,4); R(1,'ladder',0,4,0,4);
+  // deck 1 (ground): galley, hygiene, gym and both main hatches. Deck 2 (upper): crew quarters lined with storage
+  // at both ends of each bunk row (radiation shelter), medical bay, workstations and a hatch. The ladder sits next to a
+  // deck-1 hatch, so if the upstairs hatch is blocked the crew can climb down and get out quickly.
+  fillRows([["FFFFTTT.HH", "FFFF....HH", "XL.......X", ".....EEEET", ".....EEEET"], ["TSSSSSSSST", "TSSSSSSSST", ".L.......X", ".MM..WWWWW", ".MM..WWWWW"]]);
   syncInputs(); buildGrid(); refresh();
   toast('2-deck good example loaded: switch decks with the tabs above the grid');
 }
@@ -1386,7 +1610,7 @@ const SHAPE_EXAMPLES = {
   cylinder: {
     one: {a:11, b:0,
       good: [
-        ["   SSSTT   ", "  SSSSTWW  ", " SSSS.WWWW ", "SSS....WWWT", "..........T", "X.........X", "T......MMMH", "TFFFF...HHH", " FFFF..EEE ", "  FF..EEE  ", "   TTTTE   "],
+        ["   TSSST   ", "  TSSSSST  ", " TSSSST..W ", "TSST...WWWW", ".......WWWW", "X.........X", ".......MMMH", ".FFFF...HHH", " FFFF..EEE ", "  FF..EEE  ", "   TTT.E   "],
       ],
       bad: [
         ["   SSEEE   ", "  SSSEEEW  ", " SSS..WWWW ", "S......WWW.", "...........", "X..........", ".FFFFHHMM..", ".FFFFHH....", " TTTTTTTTT ", "  .......  ", "   .....   "],
@@ -1394,8 +1618,8 @@ const SHAPE_EXAMPLES = {
     },
     two: {a:8, b:0,
       good: [
-        ["  TTTT  ", " FFFF.T ", "TFFF...T", "X.......", "L......X", "T..HHEEE", " THHEEE ", "  TEET  "],
-        ["  WWWW  ", " WWWW.T ", "MMM....X", ".......T", "L.......", "T.SSSSSS", " SSSSSS ", "  SSSS  "],
+        ["  TTTT  ", " FFFF.T ", ".FFF....", "X.......", "L......X", "...HHEEE", " .HHEEE ", "  .EE.  "],
+        ["  WWWW  ", " WWWW.T ", "MMM....X", "T.SSSS.T", "L.......", "TSSSSSST", " TSSSST ", "  TSST  "],
       ],
       bad: [
         ["  FFFF  ", " FFHH.. ", "...HH...", "X.......", "....LEEE", "....EEEE", " ...... ", "  ....  "],
@@ -1426,7 +1650,7 @@ const SHAPE_EXAMPLES = {
   ring: {
     one: {a:14, b:6,
       good: [
-        ["    SSS.TT    ", "   SSSS.WWW   ", "  SSSS..WWWW  ", " SSSS....WWWW ", "TSS..    ...WW", "T...      ...X", "X...      .MMM", "T...      .MMM", "T...      .HHH", ".....    ..HHH", " FFFF.....EE. ", "  FFFF..EEEE  ", "   FFF..EEE   ", "    TTTTTT    "],
+        ["    TSSSTW    ", "   TSSSSTWW   ", "  TSSSST.WWW  ", " TSSSST..WWWW ", "TSSTX    X.WWW", "....      ...X", "X...      .MMM", "....      .MMM", "....      .HHH", ".....    ..HHH", " FFFF.....EE. ", "  FFFF..EEEE  ", "   FFF..EEE   ", "    ..TT..    "],
       ],
       bad: [
         ["    SSSEEE    ", "   SSSSEEE.   ", "  SSS.......  ", " ......WWW... ", ".....    .....", "TTTT      TTTT", "....      ....", "....      ....", "X...      ....", ".....    .....", " FFFFHHH..... ", "  FFFFHH....  ", "   ........   ", "    ......    "],
@@ -1434,8 +1658,8 @@ const SHAPE_EXAMPLES = {
     },
     two: {a:11, b:5,
       good: [
-        ["   TTTTT   ", "  FFFLWWW  ", " FFFF.WWWW ", "FFF.   .WWW", "X..     ..X", "LT.     .TT", "T..     ..T", "HHH.   .EEE", " HHH...EEE ", "  ..T.EEE  ", "   .TTT.   "],
-        ["   SSSSS   ", "  SSSLSSS  ", " SSSS.SSSS ", "SSS.   .SSS", "...     ..X", "L..     ..T", "...     ..T", "MMM.   ....", " MMM..TT.. ", "  MMT....  ", "   T...T   "],
+        ["   .....   ", "  FFFLWWW  ", " FFFF.WWWW ", "FFF.   .WWW", "X..     ..X", "L..     ...", "...     ..X", "HHH.   .EEE", " HHH...EEE ", "  ....EEE  ", "   .TT..   "],
+        ["   TSSST   ", "  TSSLSST  ", " TSSSSSSST ", "TSST   TSST", "TSS     ..X", "L..     TST", "...     TST", "MMM.   TSST", " MMM...TST ", "  MM.....  ", "   ..X..   "],
       ],
       bad: [
         ["   .....   ", "  FFFHH..  ", " FFFFHH... ", "....   ....", "X..     ...", "...     ...", "...     ...", "....   .EEE", " ......LEE ", "  ....EEE  ", "   .....   "],
@@ -1446,7 +1670,7 @@ const SHAPE_EXAMPLES = {
   lshape: {
     one: {a:12, b:5,
       good: [
-        ["SSSSS       ", "SSSS.       ", "SSSST       ", "X....       ", "WWWW.       ", "WWWWT       ", "T....       ", "T....MMMHHHH", "...........X", "FFFFF....EEE", "FFFFF....EEE", "TTTT...TTEEE"],
+        ["TSSST       ", "TSSST       ", "TSSST       ", "X....       ", "TSSSS       ", "....X       ", "WWWW.       ", "WWWW.MMMHHHH", "...........X", "FFFFF....EEE", "FFFFF....EEE", ".TTT.....EEE"],
       ],
       bad: [
         ["SSSSS       ", "SSEEE       ", "SSEEE       ", ".....       ", "TTTTT       ", ".....       ", ".....       ", "X....FFFHH..", ".....FFFHH..", "............", "WWWW........", "WWWW........"],
@@ -1454,8 +1678,8 @@ const SHAPE_EXAMPLES = {
     },
     two: {a:9, b:4,
       good: [
-        ["FFFF     ", "FFFF     ", "TTT.     ", "....     ", "X...     ", "L.......T", "T...HHEEE", "T...HHEEE", "...TTTEEX"],
-        ["SSSS     ", "SSSS     ", "SSSS     ", "SS.X     ", "....     ", "L...WWWW.", "MMM..WWWW", "MMM..WWWW", "....TTT.T"],
+        ["FFFX     ", "FFFF     ", "TTT.     ", "....     ", "X...     ", "L......TT", "....HHEEE", "....HHEEE", "......EEX"],
+        ["TTTT     ", "SSSS     ", "SSSS     ", "SSSX     ", "SSS.     ", "L...WWWW.", "MMM..WWWW", "MMM..WWWW", "TTTT....."],
       ],
       bad: [
         ["FFHH     ", "FFHH     ", "....     ", "....     ", "X...     ", ".........", "....LEEE.", "....EEEE.", "........."],
@@ -1655,11 +1879,14 @@ function renderCompare(list){
 let modalMode = 'export';
 function openModal(mode){
   modalMode = mode; $('#modal').classList.add('on');
-  $('#mTitle').textContent = mode==='export' ? 'Export layouts' : 'Import layouts';
-  $('#mHelp').textContent = mode==='export' ? 'Copy this JSON and keep it, or share it with your team. It contains every saved layout plus the current one.' : 'Paste exported JSON, or choose a .json file.';
+  $('#mTitle').textContent = mode==='export' ? 'Export layouts' : mode==='share' ? 'Share this layout' : 'Import layouts';
+  $('#mHelp').textContent = mode==='export' ? 'Copy this JSON and keep it, or share it with your team. It contains every saved layout plus the current one.'
+    : mode==='share' ? 'Anyone who opens this link sees this exact layout (mission, shape, decks and every zone). Nothing is uploaded: the layout is stored inside the link itself.'
+    : 'Paste exported JSON, or choose a .json file.';
   $('#mText').value = mode==='export' ? JSON.stringify({version:1, current:snapshot('Current'), saved:loadStore()}, null, 1) : '';
+  $('#mText').rows = mode==='share' ? 4 : 10;
   $('#mOk').style.display = $('#mFile').style.display = mode==='import' ? '' : 'none';
-  $('#mCopy').style.display = mode==='export' ? '' : 'none';
+  $('#mCopy').style.display = mode==='export' || mode==='share' ? '' : 'none';
 }
 $('#btnExport').onclick = () => openModal('export');
 $('#btnImport').onclick = () => openModal('import');
@@ -1902,7 +2129,7 @@ window.addEventListener('resize', () => { if (tourI>=0) tourShow(tourI); });
  
 /* ===================== INIT ===================== */
 G = geometry(S); S.cells = new Array(G.W*G.H).fill(null);
-try { syncInputs(); buildGrid(); loadExample(false); history = []; }
+try { syncInputs(); buildGrid(); loadExample(false); history = []; if (location.hash.includes('g=')){ loadFromHash(); history = []; } }
 finally { renderSaved(); }
 let tourDone = false; try { tourDone = localStorage.getItem('habitat-tour-done') === '1'; } catch(e){}
 if (!tourDone) setTimeout(() => tourShow(0), 500);
@@ -1910,4 +2137,3 @@ if (!tourDone) setTimeout(() => tourShow(0), 500);
 </body>
 </html>
  
-
