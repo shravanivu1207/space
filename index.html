@@ -166,10 +166,10 @@ details p,details li{font-size:12px;color:#c3cad9}
   </div>
   <div class="spacer"></div>
   <span class="pill" id="hdrScore">—</span>
-  <button id="btnExGood">Load good example</button>
-  <button id="btnExBad">Load flawed example</button>
-  <button id="btnEx2">Load 2-deck good example</button>
-  <button id="btnEx2Bad">Load 2-deck flawed example</button>
+  <button id="btnExGood" title="Loads an example for the habitat shape selected in the Mission panel">Load good example</button>
+  <button id="btnExBad" title="Loads an example for the habitat shape selected in the Mission panel">Load flawed example</button>
+  <button id="btnEx2" title="Loads an example for the habitat shape selected in the Mission panel">Load 2-deck good example</button>
+  <button id="btnEx2Bad" title="Loads an example for the habitat shape selected in the Mission panel">Load 2-deck flawed example</button>
   <button id="btnFix" class="fix" title="Let the tool improve the layout step by step">✨ Auto-fix</button>
   <button id="btnUndo" title="Ctrl+Z">↶ Undo</button>
   <button id="btnClear">Clear</button>
@@ -1377,10 +1377,117 @@ function loadExample2Bad(){
   syncInputs(); buildGrid(); refresh();
   toast('2-deck flawed example loaded: check both decks, then try Auto-fix');
 }
-$('#btnEx2').onclick = () => { $('#baCard').style.display='none'; $('#fixlog').innerHTML=''; loadExample2(false); };
-$('#btnEx2Bad').onclick = () => { $('#baCard').style.display='none'; $('#fixlog').innerHTML=''; loadExample2(true); };
-$('#btnExGood').onclick = () => { $('#baCard').style.display='none'; $('#fixlog').innerHTML=''; loadExample(false); };
-$('#btnExBad').onclick = () => { $('#baCard').style.display='none'; $('#fixlog').innerHTML=''; loadExample(true); };
+// Example layouts for the non-rectangular shapes (6 crew, 180 days). Each deck is drawn as text rows:
+// S sleep · E exercise · H hygiene · F food · W work · M medical · T storage · X hatch · L ladder · . open floor · (space) outside the hull
+const SHAPE_EXAMPLES = {
+  cylinder: {
+    one: {a:11, b:0,
+      good: [
+        ["   SSSTT   ", "  SSSSTWW  ", " SSSS.WWWW ", "SSS....WWWT", "..........T", "X.........X", "T......MMMH", "TFFFF...HHH", " FFFF..EEE ", "  FF..EEE  ", "   TTTTE   "],
+      ],
+      bad: [
+        ["   SSEEE   ", "  SSSEEEW  ", " SSS..WWWW ", "S......WWW.", "...........", "X..........", ".FFFFHHMM..", ".FFFFHH....", " TTTTTTTTT ", "  .......  ", "   .....   "],
+      ],
+    },
+    two: {a:8, b:0,
+      good: [
+        ["  TTTT  ", " FFFF.T ", "TFFF...T", "X.......", "L......X", "T..HHEEE", " THHEEE ", "  TEET  "],
+        ["  WWWW  ", " WWWW.T ", "MMM....X", ".......T", "L.......", "T.SSSSSS", " SSSSSS ", "  SSSS  "],
+      ],
+      bad: [
+        ["  FFFF  ", " FFHH.. ", "...HH...", "X.......", "....LEEE", "....EEEE", " ...... ", "  ....  "],
+        ["  ....  ", " ...... ", "TTTTTTTT", "WWW.....", "SSS.LSSS", "SSSS.SSS", " MM.... ", "  ....  "],
+      ],
+    },
+  },
+  dome: {
+    one: {a:13, b:0,
+      good: [
+        ["    TTTTT    ", "  TSSS.WWWT  ", " TSSSS.WWWWT ", " SSSSS..WWWW ", "TSSSS....WWWT", ".............", "X...........X", "......MMMHHH.", "TFFFF.MMMHHHT", " FFFF....EEE ", " TFFF...EEET ", "  TFF..EEET  ", "    TTTTT    "],
+      ],
+      bad: [
+        ["    .....    ", "  .SSSEEE.   ", " .SSSSEEE..  ", " SSS.......  ", "..........WWW", "..........WWW", "X............", ".FFFFHHHH....", ".FFFFHHHH....", " TTTTTTTTTTT ", " .........  ", "  .......   ", "    ...      "],
+      ],
+    },
+    two: {a:11, b:0,
+      good: [
+        ["   TEEET   ", "  HHEEEE.  ", " HHHEEE... ", "T.........T", "TTT.....TTT", "X.........X", "WWL.....LFF", "TWWW...FFFT", " WWW..FFF. ", "  TTT.TTT  ", "   T...T   "],
+        ["           ", "     T     ", "   TSSST   ", "  TSSSSST  ", "  SSSSSSS  ", " T.SSSSS.T ", "  L.....L  ", "  TMMMM.T  ", "   T...T   ", "     T     ", "           "],
+      ],
+      bad: [
+        ["   .....   ", "  .......  ", " ......... ", ".FFFHH.....", ".FFFHH.....", "X....LEEE..", ".....EEEE..", "...........", " ......... ", "  .......  ", "   .....   "],
+        ["           ", "     .     ", "   .....   ", "  .SSSS..  ", "  .SSSS..  ", " ..SSL.... ", "  TTTTTTT  ", "  .......  ", "   .....   ", "     .     ", "           "],
+      ],
+    },
+  },
+  ring: {
+    one: {a:14, b:6,
+      good: [
+        ["    SSS.TT    ", "   SSSS.WWW   ", "  SSSS..WWWW  ", " SSSS....WWWW ", "TSS..    ...WW", "T...      ...X", "X...      .MMM", "T...      .MMM", "T...      .HHH", ".....    ..HHH", " FFFF.....EE. ", "  FFFF..EEEE  ", "   FFF..EEE   ", "    TTTTTT    "],
+      ],
+      bad: [
+        ["    SSSEEE    ", "   SSSSEEE.   ", "  SSS.......  ", " ......WWW... ", ".....    .....", "TTTT      TTTT", "....      ....", "....      ....", "X...      ....", ".....    .....", " FFFFHHH..... ", "  FFFFHH....  ", "   ........   ", "    ......    "],
+      ],
+    },
+    two: {a:11, b:5,
+      good: [
+        ["   TTTTT   ", "  FFFLWWW  ", " FFFF.WWWW ", "FFF.   .WWW", "X..     ..X", "LT.     .TT", "T..     ..T", "HHH.   .EEE", " HHH...EEE ", "  ..T.EEE  ", "   .TTT.   "],
+        ["   SSSSS   ", "  SSSLSSS  ", " SSSS.SSSS ", "SSS.   .SSS", "...     ..X", "L..     ..T", "...     ..T", "MMM.   ....", " MMM..TT.. ", "  MMT....  ", "   T...T   "],
+      ],
+      bad: [
+        ["   .....   ", "  FFFHH..  ", " FFFFHH... ", "....   ....", "X..     ...", "...     ...", "...     ...", "....   .EEE", " ......LEE ", "  ....EEE  ", "   .....   "],
+        ["   SSSSS   ", "  SSSSSS.  ", " ......... ", "TTTT   TTTT", "...     ...", "...     ...", "...     ...", "....   .S..", " ......LSS ", "  .......  ", "   .....   "],
+      ],
+    },
+  },
+  lshape: {
+    one: {a:12, b:5,
+      good: [
+        ["SSSSS       ", "SSSS.       ", "SSSST       ", "X....       ", "WWWW.       ", "WWWWT       ", "T....       ", "T....MMMHHHH", "...........X", "FFFFF....EEE", "FFFFF....EEE", "TTTT...TTEEE"],
+      ],
+      bad: [
+        ["SSSSS       ", "SSEEE       ", "SSEEE       ", ".....       ", "TTTTT       ", ".....       ", ".....       ", "X....FFFHH..", ".....FFFHH..", "............", "WWWW........", "WWWW........"],
+      ],
+    },
+    two: {a:9, b:4,
+      good: [
+        ["FFFF     ", "FFFF     ", "TTT.     ", "....     ", "X...     ", "L.......T", "T...HHEEE", "T...HHEEE", "...TTTEEX"],
+        ["SSSS     ", "SSSS     ", "SSSS     ", "SS.X     ", "....     ", "L...WWWW.", "MMM..WWWW", "MMM..WWWW", "....TTT.T"],
+      ],
+      bad: [
+        ["FFHH     ", "FFHH     ", "....     ", "....     ", "X...     ", ".........", "....LEEE.", "....EEEE.", "........."],
+        ["....     ", "....     ", "TTTT     ", "WWW.     ", "....     ", "SSS.LSSS.", "SSSS.SSS.", "MM.......", "........."],
+      ],
+    },
+  },
+};
+ 
+const EX_CODE = {S:'sleep', E:'exercise', H:'hygiene', F:'food', W:'work', M:'medical', T:'storage', X:'exit', L:'ladder'};
+// Load the example for the habitat shape currently selected in the Mission panel.
+// kind: 'good' | 'bad'; decks: 1 | 2. The rectangle keeps its original hand-built examples.
+function loadExampleForShape(kind, decks){
+  $('#baCard').style.display='none'; $('#fixlog').innerHTML='';
+  const shape = $('#inShape').value || S.shape;
+  if (shape === 'rect'){
+    if (decks === 2) loadExample2(kind === 'bad'); else loadExample(kind === 'bad');
+    return;
+  }
+  const set = SHAPE_EXAMPLES[shape][decks === 2 ? 'two' : 'one'], layout = set[kind];
+  pushHistory();
+  S = {crew:6, days:180, shape, a:set.a, b:set.b, height:2.5, structure: shape==='dome' ? 'inflatable' : 'rigid', decks:layout.length, cells:[]};
+  applyGeometry(null); curDeck = 0;
+  layout.forEach((rows, d) => rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    const i = d*G.N + y*G.W + x;
+    if (EX_CODE[ch] && G.mask[i]) S.cells[i] = EX_CODE[ch];
+  })));
+  syncInputs(); buildGrid(); refresh();
+  const nm = SHAPES[shape].name, shapeName = nm.startsWith('L-') ? nm : nm[0].toLowerCase() + nm.slice(1);
+  toast(`${kind==='good' ? 'Good' : 'Flawed'} ${decks===2 ? '2-deck ' : ''}example loaded for the ${shapeName}${kind==='bad' ? ': try Auto-fix' : ''}`);
+}
+$('#btnExGood').onclick = () => loadExampleForShape('good', 1);
+$('#btnExBad').onclick  = () => loadExampleForShape('bad', 1);
+$('#btnEx2').onclick    = () => loadExampleForShape('good', 2);
+$('#btnEx2Bad').onclick = () => loadExampleForShape('bad', 2);
 $('#btnUndo').onclick = undo;
 $('#btnClear').onclick = () => { pushHistory(); S.cells = S.cells.map(()=>null); refresh(); };
  
@@ -1751,7 +1858,7 @@ function drawTag(ctx, text, p, dpr){
  
 /* ===================== TUTORIAL ===================== */
 const TOUR = [
-  {sel:'#cardMission', title:'1. Describe the mission', body:'Set the crew size, mission length, habitat shape and number of <b>decks</b> (floors). The rules (living space, zone sizes, noise limits) change automatically, so try the preset buttons.'},
+  {sel:'#cardMission', title:'1. Describe the mission', body:'Set the crew size, mission length, habitat shape and number of <b>decks</b> (floors). The rules (living space, zone sizes, noise limits) change automatically, so try the preset buttons. The <b>example buttons</b> at the top load an example for the shape you pick here.'},
   {sel:'#cardTools',   title:'2. Pick a zone', body:'Choose a zone (or press keys 1–7). <b>Hatch</b> places an emergency exit on the outer wall, <b>Ladder</b> connects decks, and the eraser makes open corridor. Each zone shows how many m² you have versus how many are needed.'},
   {sel:'#gridwrap',    title:'3. Paint the layout', body:'Drag on the grid to paint and right-click to erase. Switch to <b>Noise map</b> or <b>Exit paths</b> above the grid to see loud spots and escape routes, or <b>🧊 3D view</b> to see your habitat in 3D.'},
   {sel:'#cardScore',   title:'4. Read your score', body:'The score updates live and shows the cost estimate under the grid. Under <b>Top improvements</b>, click a suggestion to highlight the cells it is about.'},
@@ -1800,3 +1907,4 @@ if (!tourDone) setTimeout(() => tourShow(0), 500);
 </body>
 </html>
  
+
