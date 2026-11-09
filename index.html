@@ -1140,11 +1140,12 @@ function syncInputs(){
   if (sh.b){ $('#wrapB').style.display=''; $('#lblB').textContent = sh.b[0]; } else $('#wrapB').style.display='none';
 }
 function validateGeo(){
-  S.a = clamp(Math.round(S.a)||10, 4, 30);
-  if (S.shape==='rect') S.b = clamp(Math.round(S.b)||8, 3, 30);
-  if (S.shape==='ring') S.b = clamp(Math.round(S.b)||6, 2, S.a-4);
-  if (S.shape==='lshape') S.b = clamp(Math.round(S.b)||4, 2, S.a-2);
-  S.height = clamp(+S.height||2.5, 1.8, 5);
+  const numOr = (v, d) => (v === '' || v == null || !Number.isFinite(+v)) ? d : +v;
+  S.a = clamp(Math.round(numOr(S.a, 10)), 4, 30);
+  if (S.shape==='rect') S.b = clamp(Math.round(numOr(S.b, 8)), 3, 30);
+  if (S.shape==='ring') S.b = clamp(Math.round(numOr(S.b, 6)), 2, S.a-4);
+  if (S.shape==='lshape') S.b = clamp(Math.round(numOr(S.b, 4)), 2, S.a-2);
+  S.height = clamp(numOr(S.height, 2.5), 1.8, 5);
   S.decks = clamp(Math.round(+S.decks||1), 1, 3);
 }
 // change = function that edits S (shape, size, height, decks). History is saved BEFORE the edit so Undo restores it exactly.
@@ -1154,12 +1155,14 @@ function onGeoChange(change){
   if (change) change();
   validateGeo(); applyGeometry(old); curDeck = clamp(curDeck, 0, G.D-1); syncInputs(); buildGrid(); refresh();
 }
-$('#inCrew').addEventListener('change', e => { pushHistory(); S.crew = clamp(Math.round(+e.target.value)||1,1,12); syncInputs(); refresh(); });
-$('#inDays').addEventListener('change', e => { pushHistory(); S.days = clamp(Math.round(+e.target.value)||1,1,1500); syncInputs(); refresh(); });
+// an empty or non-numeric box keeps the previous value instead of jumping to a default
+function blankNum(e){ const v = e.target.value.trim(); if (v === '' || !Number.isFinite(+v)) { syncInputs(); return true; } return false; }
+$('#inCrew').addEventListener('change', e => { if (blankNum(e)) return; pushHistory(); S.crew = clamp(Math.round(+e.target.value)||1,1,12); syncInputs(); refresh(); });
+$('#inDays').addEventListener('change', e => { if (blankNum(e)) return; pushHistory(); S.days = clamp(Math.round(+e.target.value)||1,1,1500); syncInputs(); refresh(); });
 $('#inShape').addEventListener('change', e => onGeoChange(() => { S.shape = e.target.value; S.structure = S.shape==='dome' ? 'inflatable' : 'rigid'; const sh = SHAPES[S.shape]; S.a = sh.a[1]; S.b = sh.b ? sh.b[1] : S.b; }));
-$('#inA').addEventListener('change', e => onGeoChange(() => { S.a = +e.target.value; }));
-$('#inB').addEventListener('change', e => onGeoChange(() => { S.b = +e.target.value; }));
-$('#inH').addEventListener('change', e => onGeoChange(() => { S.height = +e.target.value; }));
+$('#inA').addEventListener('change', e => blankNum(e) || onGeoChange(() => { S.a = +e.target.value; }));
+$('#inB').addEventListener('change', e => blankNum(e) || onGeoChange(() => { S.b = +e.target.value; }));
+$('#inH').addEventListener('change', e => blankNum(e) || onGeoChange(() => { S.height = +e.target.value; }));
 $('#inStruct').addEventListener('change', e => { pushHistory(); S.structure = e.target.value; refresh(); });
 $('#inDecks').addEventListener('change', e => {
   const nd = +e.target.value, od = S.decks || 1;
