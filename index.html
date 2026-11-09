@@ -1,4 +1,7 @@
+Claude
 
+
+Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -501,6 +504,9 @@ const STORE_KEY = 'habitat-layouts-v1';
  
 const $ = s => document.querySelector(s);
 const fmt = (v,d=1) => (Math.round(v*10**d)/10**d).toLocaleString();
+// show a measured value next to its limit without rounding hiding the problem: 12.4 vs limit 12 → "12.4", not "12"
+const vsLimit = (v, lim) => (v > lim && Math.round(v) <= lim) ? fmt(Math.ceil(v*10)/10, 1) : fmt(v, 0);
+const vsLimitNum = (v, lim) => (v > lim && Math.round(v) <= lim) ? Math.ceil(v*10)/10 : Math.round(v);
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const pct = v => Math.round(v*100) + '%';
  
@@ -756,7 +762,7 @@ function analyze(){
     if (!bad.length) add('noise','pass',`${nm} is quiet enough`,`Loudest point ${fmt(maxL,0)} dBA (limit ${std}).`,null,zc);
     else {
       const src = dom[worst] ? ZONES[dom[worst]].name.toLowerCase() : 'nearby zones';
-      add('noise', maxL-lim > 6 ? 'fail' : 'warn', `${nm} too noisy: ${fmt(maxL,0)} dBA`,
+      add('noise', maxL-lim > 6 ? 'fail' : 'warn', `${nm} too noisy: ${vsLimit(maxL, lim)} dBA`,
         `${bad.length} m² is above the limit (${std}). The loudest source is ${src}.`,
         D>1 ? `Move ${src} further from ${nm.toLowerCase()}, put storage between them, or put them on different decks (a deck floor blocks most sound, but ladder openings let it through).`
             : `Move ${src} further from ${nm.toLowerCase()} or put storage between them, because racks absorb sound.`,
@@ -821,7 +827,7 @@ function analyze(){
           : 'Storage racks or walls block every path from these cells to a hatch, so crew there could not escape. NASA-STD-3001 (V2 8014) requires escape routes free of stowed items.',
       D>1 ? 'Open a gap in the storage, add a hatch, or add a ladder to a deck with a hatch.' : 'Open a 1 m gap in the storage, or add a hatch next to the cut-off area.',unreachable,WEIGHTS.egress*.5*unreachable.length/W1+3);
     if (worstCell>=0){
-      const md = Math.round(dist[worstCell]);
+      const md = vsLimit(dist[worstCell], R.maxEgress);
       const climb = D>1 && worstPath.some((c,k) => k && idk(c)!==idk(worstPath[k-1])) ? ', including climbing' : '';
       if (dist[worstCell] > R.maxEgress) add('egress', dist[worstCell]>R.maxEgress*1.4?'fail':'warn', `Longest escape route ${md} m${climb} (limit ${R.maxEgress} m)`,`${tooFar.length} m² is too far from a hatch.`,D>1?'Add a hatch or a ladder closer to the far end, or straighten the corridor.':'Add a hatch closer to the far end, or straighten the corridor.',tooFar,WEIGHTS.egress*.5*tooFar.length/W1+2);
       else add('egress','pass',`Every point is within ${md} m of an exit${climb}`,`Design limit for ${S.crew} crew is ${R.maxEgress} m (NASA sets no distance)${D>1?'; climbing one deck counts as the deck height':''}. The outlined route is the longest.`,null,worstPath);
@@ -893,7 +899,7 @@ function analyze(){
     deckWays, deckIssue, exitsShort,
     cost: costOf(totalVol, S.structure),
     stats:{interior, nhv, totalVol, mass: costOf(totalVol, S.structure).kg, launch: costOf(totalVol, S.structure).usd, perCrew:nhv/S.crew, circ, conflicts,
-      maxEgress: worstCell>=0?Math.round(dist[worstCell]):null, exits:exits.length, decks:D, ladders:shafts,
+      maxEgress: worstCell>=0?vsLimitNum(dist[worstCell], R.maxEgress):null, exits:exits.length, decks:D, ladders:shafts,
       sleepNoise: count.sleep ? Math.max(...idxOf('sleep').map(i=>noiseMap[i])) : null,
       issues: checks.filter(c=>c.status!=='pass').length}};
 }
@@ -1135,7 +1141,7 @@ function safetyTests(){
     const trapped = people.filter(i => !isFinite(dist[i]));
     let longest = 0; for (const i of people) if (isFinite(dist[i])) longest = Math.max(longest, dist[i]);
     const status = trapped.length ? 'fail' : longest > A.R.maxEgress ? 'warn' : 'pass';
-    return {hatch:h, dist, trapped, longest:Math.round(longest), status};
+    return {hatch:h, dist, trapped, longest:vsLimitNum(longest, A.R.maxEgress), status};
   });
   const worst = tests.some(t=>t.status==='fail') ? 'fail' : tests.some(t=>t.status==='warn') ? 'warn' : 'pass';
   const hatch = {tests, status: !A.exits.length ? 'na' : A.exits.length===1 ? (A.R.exitsRequired>1 ? 'fail' : 'warn') : worst};
@@ -1252,7 +1258,7 @@ function reportHTML(){
   <h2>Key numbers</h2>
   <table>${row('Living volume (storage not counted)', `${fmt(st.nhv)} m³ · ${fmt(st.perCrew)} m³ per person (needs ${A.R.volPerCrew} m³)`)}
     ${row('Walkway / circulation space', pct(st.circ))}${row('Longest escape route', st.maxEgress!=null ? `${st.maxEgress} m (limit ${A.R.maxEgress} m)` : '—')}
-    ${row('Exits', `${st.exits} (needs ${A.R.exitsRequired})`)}${row('Loudest sleep box', st.sleepNoise!=null ? `${Math.round(st.sleepNoise)} dBA (limit ${A.R.noiseLimit.sleep} dBA)` : '—')}
+    ${row('Exits', `${st.exits} (needs ${A.R.exitsRequired})`)}${row('Loudest sleep box', st.sleepNoise!=null ? `${vsLimit(st.sleepNoise, A.R.noiseLimit.sleep)} dBA (limit ${A.R.noiseLimit.sleep} dBA)` : '—')}
     ${row('Hull volume · structure mass', `${fmt(st.totalVol)} m³ · ${tonnes(st.mass)}`)}${row('Launch cost estimate', money(st.launch))}</table>
   <h2>Top improvements</h2>
   ${A.suggestions.length ? `<ol>${A.suggestions.slice(0,8).map(s=>`<li><b>+${Math.max(1,Math.round(s.impact))} pts:</b> ${s.fix} <span class="na">(${s.title})</span></li>`).join('')}</ol>` : '<p class="pass">Nothing to improve: this layout passes every check.</p>'}
@@ -1276,6 +1282,8 @@ window.addEventListener('afterprint', () => { document.body.classList.remove('pr
 /* ===================== EDITING ===================== */
 function pushHistory(){ history.push(JSON.stringify(S)); if (history.length>80) history.shift(); }
 function undo(){
+  const now = JSON.stringify(S);
+  while (history.length && history[history.length-1] === now) history.pop();   // skip clicks that changed nothing
   if (!history.length) return toast('Nothing to undo');
   const prev = JSON.parse(history.pop()), geoChanged = ['shape','a','b','height','decks'].some(k => (prev[k]||1)!==(S[k]||1));
   S = prev; S.decks = S.decks || 1; G = geometry(S); syncInputs(); if (geoChanged) buildGrid(); refresh();
@@ -1330,7 +1338,7 @@ window.addEventListener('pointermove', e => {
     if (painting && tool!=='exit' && tool!=='ladder' && li !== lastPainted){ lastPainted = li; paintAt(lastPainted, eraseDrag); refreshSoon(); }
   }
 });
-window.addEventListener('pointerup', () => { painting = false; lastPainted = -1; });
+window.addEventListener('pointerup', () => { if (painting && history.length && history[history.length-1] === JSON.stringify(S)) history.pop(); painting = false; lastPainted = -1; });
  
 $('#tools').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b){ tool = b.dataset.t; renderTools(); } });
 $('#brush').addEventListener('click', e => { const b = e.target.closest('[data-b]'); if (!b) return; brush = +b.dataset.b; [...$('#brush').children].forEach(x=>x.classList.toggle('on', x===b)); });
@@ -1470,9 +1478,11 @@ async function autoFix(){
   const beforeLayout = {...S, cells:[...S.cells]}, beforeA = A;
   rng = seededRng(layoutHash());
   let cur = analyze(), budget = 12000;   // stop after a fixed amount of work (not time), so results are always repeatable
+  // one check costs about the same per floor box, so big habitats use up the budget faster (up to 200 boxes: 1 unit per try)
+  const interior = G.mask.reduce((n,m)=>n+(m?1:0), 0), unit = Math.max(1, interior / 200);
   for (let round=0; round<60 && budget > 0; round++){
     const C = candidates(cur); let best = null;
-    budget -= C.length;
+    budget -= C.length * unit;
     for (const c of C){
       const old = c.cells.map(i=>S.cells[i]);
       c.cells.forEach((i,k)=>S.cells[i]=c.vals[k]);
@@ -2153,4 +2163,3 @@ if (!tourDone) setTimeout(() => tourShow(0), 500);
 </body>
 </html>
  
-
