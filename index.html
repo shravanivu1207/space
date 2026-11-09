@@ -1,7 +1,4 @@
-Claude
 
-
-Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1797,12 +1794,24 @@ function analyzeLayout(L){
   try {
     S = {crew:L.crew, days:L.days, shape:L.shape, a:L.a, b:L.b, height:L.height, structure:L.structure||'rigid', decks:L.decks||1, cells:[...L.cells]};
     G = geometry(S);
-    return analyze();
+    const a = analyze();
+    // extra safety tests for this layout (they need the analysis in A while they run)
+    const A0 = A; let sf;
+    try { A = a; sf = safetyTests(); } finally { A = A0; }
+    const pts = st => st==='pass' || st==='na' ? 2 : st==='warn' ? 1 : 0;   // 'na' = not needed for this mission
+    const worstTrap = Math.max(0, ...sf.hatch.tests.map(t => t.trapped.length)), worstWalk = Math.max(0, ...sf.hatch.tests.map(t => t.longest));
+    a.safe = {rad: sf.rad.status, prot: sf.rad.prot.length, beds: sf.rad.sleep.length, frac: sf.rad.frac,
+              hatch: sf.hatch.status, oneHatch: a.exits.length===1, noHatch: !a.exits.length, worstTrap, worstWalk, maxEgress: a.R.maxEgress};
+    a.stats.safety = pts(sf.rad.status) + pts(sf.hatch.status);   // 0–4, used as the first tie-break
+    return a;
   } finally { S = S0; G = G0; }
 }
+// how a layout did on the two extra safety tests, in words (for the compare table)
+function safetyWords(v){ const n = v/2; return v===4 ? '✓ Both passed' : v===0 ? '✕ Both failed' : `${Number.isInteger(n) ? n : fmt(n,1)} of 2 passed`; }
 // Ranking used to pick the best layout. Score first; if scores tie, these decide in this order.
 const RANK = [
   {key:'total',      name:'higher total score',              better:'high', show:v=>v,                 round:v=>v},
+  {key:'safety',     name:'safer design', better:'high', show:safetyWords,     round:v=>v},
   {key:'sleepNoise', name:'quieter sleep area',              better:'low',  show:v=>v==null?'—':fmt(v,1)+' dBA', round:v=>v==null?999:Math.round(v*10)/10},
   {key:'maxEgress',  name:'shorter escape route',            better:'low',  show:v=>v==null?'—':v+' m', round:v=>v==null?999:v},
   {key:'perCrew',    name:'more living space per person',    better:'high', show:v=>fmt(v)+' m³',     round:v=>Math.round(v*10)/10},
@@ -1824,7 +1833,7 @@ function compareBanner(rs){
   if (missions.size > 1) html += `<div class="cmpwarn">⚠️ These layouts are for <b>different missions</b> (${[...missions].join(' vs ')}), so each is scored against different rules. For a fair comparison, use the same crew size and mission length.</div>`;
   const sorted = [...rs].sort(compareRank), win = sorted[0], second = sorted[1];
   if (compareRank(win, second) === 0){
-    html += `<div class="cmpwin">🤝 <b>It's a tie.</b> These layouts are equally good on everything we rank: score, sleep noise, escape distance, living space, cost and warnings.</div>`;
+    html += `<div class="cmpwin">🤝 <b>It's a tie.</b> These layouts are equally good on everything we rank: score, extra safety tests, sleep noise, escape distance, living space, cost and warnings.</div>`;
   } else {
     const c = RANK.find(c => c.round(rankValue(win,c.key)) !== c.round(rankValue(second,c.key)));
     const vals = `${c.show(rankValue(win,c.key))} vs ${c.show(rankValue(second,c.key))}`;
@@ -1856,6 +1865,13 @@ function renderCompare(list){
   const rows = [
     ['Total score', r=>r.a.total, 'max', v=>v],
     ...Object.keys(WEIGHTS).map(k => [CAT_NAMES[k], r=>Math.round(r.a.cats[k]*WEIGHTS[k]), 'max', v=>`${v}/${WEIGHTS[k]}`]),
+    ['☢️ Radiation storm shelter', r=>r.a.safe.beds ? Math.round(r.a.safe.frac*100) : -1, 'max',
+      (v,r)=> v<0 ? '— (no beds)' : `${r.a.safe.rad==='pass'?'✓':r.a.safe.rad==='warn'?'!':r.a.safe.rad==='fail'?'✕':'○'} ${r.a.safe.prot} of ${r.a.safe.beds} beds protected (${v}%)${r.a.safe.rad==='na'?' · optional for short missions':''}`],
+    ['🚪 Blocked-hatch test', r=>r.a.safe.noHatch ? -1 : r.a.safe.hatch==='pass' ? 2 : r.a.safe.hatch==='warn' ? 1 : 0, 'max',
+      (v,r)=> v<0 ? '— (no hatch)' : r.a.safe.hatch==='pass' ? '✓ Any hatch can be blocked, everyone escapes'
+        : r.a.safe.oneHatch ? `${r.a.safe.hatch==='fail'?'✕':'!'} Only one hatch: blocked = everyone trapped`
+        : r.a.safe.worstTrap ? `✕ ${r.a.safe.worstTrap} m² trapped if a hatch is blocked` : `! Backup route ${r.a.safe.worstWalk} m (limit ${r.a.safe.maxEgress} m)`],
+    ['Extra safety tests (tie-break)', r=>r.a.stats.safety, 'max', v=>safetyWords(v)],
     ['Sleep noise (loudest point)', r=>r.a.stats.sleepNoise==null?999:Math.round(r.a.stats.sleepNoise*10)/10, 'min', v=>v===999?'—':fmt(v,1)+' dBA'],
     ['Living volume per person', r=>Math.round(r.a.stats.perCrew*10)/10, 'max', v=>fmt(v)+' m³'],
     ['Living volume (total)', r=>Math.round(r.a.stats.nhv), 'none', v=>fmt(v,0)+' m³'],
@@ -1871,8 +1887,8 @@ function renderCompare(list){
   $('#compare').innerHTML = compareBanner(rs) +
     `<table class="cmp"><thead><tr><th></th>${rs.map(r=>`<th>${esc(r.L.name)}<br><span style="font-size:11px">${r.L.crew} crew · ${r.L.days} d</span></th>`).join('')}</tr></thead><tbody>` +
     rows.map(([lab,get,dir,f]) => { const vals = rs.map(get); const best = dir==='none' ? NaN : dir==='max'?Math.max(...vals):Math.min(...vals);
-      return `<tr><th>${lab}</th>${vals.map(v=>`<td class="${v===best && new Set(vals).size>1?'best':''}">${f(v)}</td>`).join('')}</tr>`; }).join('') + '</tbody></table>' +
-    `<div class="cmpnote" style="margin-top:6px">Green = best in that row. Tie-break order when scores are equal: quieter sleep → shorter escape → more living space per person → lower launch cost → fewer warnings.</div>`;
+      return `<tr><th>${lab}</th>${vals.map((v,ix)=>`<td class="${v===best && new Set(vals).size>1?'best':''}">${f(v, rs[ix])}</td>`).join('')}</tr>`; }).join('') + '</tbody></table>' +
+    `<div class="cmpnote" style="margin-top:6px">Green = best in that row. Tie-break order when scores are equal: passes more extra safety tests → quieter sleep → shorter escape → more living space per person → lower launch cost → fewer warnings. The safety tests never beat a higher score.</div>`;
 }
  
 /* Export / import via modal (downloads are blocked in some viewers) */
@@ -2137,3 +2153,4 @@ if (!tourDone) setTimeout(() => tourShow(0), 500);
 </body>
 </html>
  
+
