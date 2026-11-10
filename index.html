@@ -1,7 +1,3 @@
-Claude
-
-
-Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -108,6 +104,14 @@ button.fix{background:linear-gradient(90deg,#2bb673,#1f9d8a);border-color:#2bb67
 .sft .hrow .hx{flex:1;min-width:0}.sft button.small{margin-top:5px}
 .ovnote{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 8px;padding:6px 10px;border-radius:8px;background:rgba(90,170,255,.12);border:1px solid rgba(90,170,255,.4);font-size:12px}
 .ovnote .spacer{flex:1}
+.xsec{display:flex;gap:12px;align-items:center;margin:8px 0 2px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:12px;color:var(--muted)}
+.xsec svg{flex:0 0 auto}.xsec b{color:var(--text)}
+button.dim{opacity:.45}
+.fit{width:100%;border-collapse:collapse;font-size:12px}.fit th,.fit td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.fit th{color:var(--muted);font-weight:600}.fit button{white-space:nowrap}.fit td.n{white-space:nowrap}.fit tr.best td{background:rgba(61,220,132,.08)}.fit .why{color:var(--muted);font-size:11px}
+.xtabs{display:flex;gap:4px;margin-bottom:5px}.xtabs button{padding:3px 9px;font-size:11px;border-radius:7px}.xtabs button.on{background:var(--accent,#5aaaff);color:#0b0e15;border-color:transparent}
+.hullsvg{position:absolute;left:0;top:0;pointer-events:none;z-index:0}.gridwrap .grid{position:relative;z-index:1}
+.c.lock{background:repeating-linear-gradient(135deg,#3a4256 0 4px,#2a3142 4px 8px)!important;cursor:not-allowed}
 #report{display:none}
 @media print{
   html.printing,body.printing{background:#fff !important}
@@ -188,16 +192,14 @@ details p,details li{font-size:12px;color:#c3cad9}
   </div>
   <div class="spacer"></div>
   <span class="pill" id="hdrScore">—</span>
-  <button id="btnExGood" title="Loads an example for the habitat shape selected in the Mission panel">Load good example</button>
-  <button id="btnExBad" title="Loads an example for the habitat shape selected in the Mission panel">Load flawed example</button>
-  <button id="btnEx2" title="Loads an example for the habitat shape selected in the Mission panel">Load 2-deck good example</button>
-  <button id="btnEx2Bad" title="Loads an example for the habitat shape selected in the Mission panel">Load 2-deck flawed example</button>
+  <button id="btnExGood" title="Builds a good layout for the crew, mission, shape, size, deck height and decks set in the Mission panel">Load good example</button>
+  <button id="btnExBad" title="Builds the same layout with typical mistakes, for the settings in the Mission panel (then try Auto-fix)">Load flawed example</button>
   <button id="btnFix" class="fix" title="Let the tool improve the layout step by step">✨ Auto-fix</button>
   <button id="btnUndo" title="Ctrl+Z">↶ Undo</button>
   <button id="btnClear">Clear</button>
   <button id="btnHelp" title="Show the tutorial">? Help</button>
 </header>
- 
+
 <div class="app">
   <!-- LEFT -->
   <aside>
@@ -225,8 +227,9 @@ details p,details li{font-size:12px;color:#c3cad9}
       <select id="inDecks"><option value="1">1 deck</option><option value="2">2 decks</option><option value="3">3 decks</option></select>
       <label class="f" for="inStruct">Structure (for cost)</label>
       <select id="inStruct"><option value="rigid">Rigid module (ISS-style)</option><option value="inflatable">Inflatable (B330-style)</option></select>
+      <button id="btnFit" class="primary" style="width:100%;margin-top:10px" title="Check every real spacecraft shape for this crew and mission">🚀 Which spacecraft fits?</button>
     </div>
- 
+
     <div class="card" id="cardTools">
       <h2>Tools <span style="text-transform:none;letter-spacing:0">(m² placed / required)</span></h2>
       <div class="tools" id="tools"></div>
@@ -234,7 +237,7 @@ details p,details li{font-size:12px;color:#c3cad9}
       <div class="seg" id="brush"><button data-b="1" class="on">1×1</button><button data-b="2">2×2</button><button data-b="3">3×3</button></div>
       <div class="status" style="margin-top:8px" id="toolHint">Drag to paint · right-click to erase · hatches go on the outer wall</div>
     </div>
- 
+
     <div class="card">
       <h2>Active rules</h2>
       <ul class="rules" id="rules"></ul>
@@ -256,7 +259,7 @@ details p,details li{font-size:12px;color:#c3cad9}
       </details>
     </div>
   </aside>
- 
+
   <!-- CENTER -->
   <main>
     <div class="card">
@@ -272,7 +275,7 @@ details p,details li{font-size:12px;color:#c3cad9}
       </div>
       <div class="ovnote" id="ovnote" style="display:none"></div>
       <div class="seg decktabs" id="deckTabs" style="display:none"></div>
-      <div class="gridwrap" id="gridwrap"><div class="grid" id="grid"></div></div>
+      <div class="gridwrap" id="gridwrap"><svg class="hullsvg" id="hullSvg" aria-hidden="true"></svg><div class="grid" id="grid"></div></div>
       <div class="view3d" id="view3d" style="display:none">
         <canvas id="c3d"></canvas>
         <div class="v3bar">
@@ -284,14 +287,15 @@ details p,details li{font-size:12px;color:#c3cad9}
         </div>
         <div class="v3hint">Drag to rotate · scroll or pinch to zoom · switch back to <b>Zones</b> above to paint</div>
       </div>
+      <div class="xsec" id="xsec" style="display:none"></div>
       <div class="legend" id="legend"></div>
       <div class="status" id="status">Hover a cell for details.</div>
       <div class="stats" id="stats"></div>
       <div id="cost"></div>
     </div>
- 
+
     <div class="card" id="baCard" style="display:none"></div>
- 
+
     <div class="card" id="cardSave">
       <div class="edhead">
         <h2>Save &amp; compare</h2>
@@ -301,13 +305,14 @@ details p,details li{font-size:12px;color:#c3cad9}
         <button id="btnExport">Export JSON</button>
         <button id="btnImport">Import JSON</button>
         <button id="btnShare" title="Copy a link that opens this exact layout">🔗 Share link</button>
+        <button id="btnMerge" title="Paste a teammate's share link and take one of their decks into this layout">🔀 Merge deck</button>
         <button id="btnReport" title="Download a PDF report of this layout">📄 PDF report</button>
       </div>
       <div class="saved" id="saved"></div>
       <div id="compare"></div>
     </div>
   </main>
- 
+
   <!-- RIGHT -->
   <aside>
     <div class="card" id="cardScore">
@@ -338,17 +343,30 @@ details p,details li{font-size:12px;color:#c3cad9}
     </div>
   </aside>
 </div>
- 
+
 <div class="modal" id="modal"><div class="box">
   <h2 id="mTitle" style="font-size:14px;margin:0 0 8px">Export</h2>
   <p id="mHelp" style="font-size:12px;color:var(--muted);margin:0 0 8px"></p>
   <textarea id="mText" rows="10"></textarea>
+  <div id="mMerge" style="display:none;margin-top:8px;font-size:12px">
+    <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="flex:none">Take their</span><select id="mFrom" style="width:auto;flex:none"></select><span style="flex:none">and put it on my</span><select id="mTo" style="width:auto;flex:none"></select>
+    </div>
+    <div id="mInfo" style="margin-top:6px;color:var(--muted)"></div>
+  </div>
   <div class="row" style="margin-top:10px;justify-content:flex-end;flex:none">
     <input type="file" id="mFile" accept=".json,application/json" style="flex:1">
     <button id="mCopy" style="flex:none">Copy</button>
     <button id="mOk" class="primary" style="flex:none">Import</button>
     <button id="mClose" style="flex:none">Close</button>
   </div>
+</div></div>
+<div class="modal" id="fitModal"><div class="box" style="width:min(820px,100%)">
+  <h2 style="font-size:14px;margin:0 0 6px">🚀 Which spacecraft fits this mission?</h2>
+  <p id="fitHelp" style="font-size:12px;color:var(--muted);margin:0 0 8px"></p>
+  <div id="fitBody" style="max-height:60vh;overflow:auto"></div>
+  <div id="fitPick" style="margin-top:8px;font-size:13px"></div>
+  <div class="row" style="margin-top:10px;justify-content:flex-end;flex:none"><button id="fitClose" style="flex:none">Close</button></div>
 </div></div>
 <div class="toast" id="toast"></div>
 <div id="report"></div>
@@ -359,7 +377,7 @@ details p,details li{font-size:12px;color:#c3cad9}
   <div class="tbody" id="tBody"></div>
   <div class="tbtns"><button class="small" id="tSkip">Skip</button><span class="spacer"></span><button class="small" id="tBack">Back</button><button class="small primary" id="tNext">Next</button></div>
 </div>
- 
+
 <script>
 /* If anything crashes, show the message on screen (helps when debugging in VS Code / GitHub Pages) */
 window.addEventListener('error', e => {
@@ -376,6 +394,7 @@ const ZONES = {
   work:     {name:'Work',         color:'#a77bff', key:'5', noise:50},
   medical:  {name:'Medical',      color:'#43d17a', key:'6'},
   storage:  {name:'Storage',      color:'#7b8394', key:'7'},
+  life:     {name:'Life support', color:'#c9925a', key:'8', noise:55},   // air, water and cooling machines (fans and pumps: noise is an estimate)
 };
 const ZK = Object.keys(ZONES);
 const BG_NOISE = 35;            // dBA, life-support fans (estimate)
@@ -402,6 +421,7 @@ const SYNERGIES = [
   {a:'medical', b:'hygiene', why:'water and sanitation close to the medical bay'},
   {a:'food',    b:'storage', why:'short trips to fetch food supplies'},
   {a:'work',    b:'storage', why:'tools and spares close to the workstations'},
+  {a:'life',    b:'hygiene', why:'the water recycler sits next to the toilet and shower, as in the ISS Tranquility module'},
 ];
 const SHAPES = {
   rect:    {name:'Rectangular module',      a:['Length (m)',12], b:['Width (m)',8]},
@@ -409,14 +429,64 @@ const SHAPES = {
   dome:    {name:'Inflatable dome',         a:['Diameter (m)',13]},
   ring:    {name:'Torus / ring',            a:['Outer diameter (m)',18], b:['Inner diameter (m)',8]},
   lshape:  {name:'L-shape (2 modules)',     a:['Arm length (m)',12], b:['Arm width (m)',5]},
+  tube:    {name:'ISS-style station (joined modules)', a:['Station size (1–5)',5]},
+  starship:{name:'Starship-style (9 m, stacked decks)', a:['Inside diameter (m)',8]},
+  skylab:  {name:'Skylab-style (NASA 1973, 2 decks)',  a:['Diameter (m)',7]},
+  b330:    {name:'B330 inflatable (Bigelow)',          a:['Length (m)',14], b:['Diameter (m)',6.7]},
 };
- 
+// Real ISS US-segment modules (sizes from NASA / ESA / JAXA fact sheets). cells = length on the 1 m grid.
+// Each module has a 1 m cone at both ends; modules are joined by a 1 m hatch ring (kept clear).
+const ISS_MODULES = {
+  Unity:      {name:'Unity',       role:'Node 1 · connecting node',                len:5.5,  dia:4.6, cells:5},
+  Destiny:    {name:'Destiny',     role:'US laboratory',                           len:8.5,  dia:4.3, cells:9},
+  Harmony:    {name:'Harmony',     role:'Node 2 · crew quarters',                  len:7.2,  dia:4.4, cells:7},
+  Columbus:   {name:'Columbus',    role:'European laboratory',                     len:6.9,  dia:4.5, cells:7},
+  Kibo:       {name:'Kibo',        role:'Japanese laboratory',                     len:11.2, dia:4.4, cells:11},
+  Tranquility:{name:'Tranquility', role:'Node 3 · toilet, gym and life support',   len:6.7,  dia:4.5, cells:7},
+  Quest:      {name:'Quest',       role:'Joint airlock · spacewalk exit',          len:5.5,  dia:4.0, cells:5},
+};
+// Station size 1–5: the main line runs front to back; side modules sit on the port (left, drawn on top) and starboard (right) ports of the nodes.
+const STATION_SIZES = ['Destiny only', 'Unity + Destiny', 'Unity – Destiny – Harmony', '+ Columbus and Kibo on Harmony', '+ Tranquility and Quest on Unity (full US segment)'];
+function stationModules(n){
+  const M = ISS_MODULES, main = n <= 1 ? [M.Destiny] : n === 2 ? [M.Unity, M.Destiny] : [M.Unity, M.Destiny, M.Harmony], sides = [];
+  if (n >= 4) sides.push({parent:'Harmony', side:'port', mod:M.Kibo}, {parent:'Harmony', side:'starboard', mod:M.Columbus});
+  if (n >= 5) sides.push({parent:'Unity', side:'port', mod:M.Tranquility}, {parent:'Unity', side:'starboard', mod:M.Quest});
+  return {main, sides};
+}
+// SpaceX Starship: 9 m wide, ~50 m tall. Its payload bay is 8 m wide inside and 17 m tall; the crew version turns it into
+// a pressurised section of about 1,000 m³. Model: decks stacked from the bay floor, a 7 m straight barrel, then a 10 m nose
+// that narrows, so a high deck gets lower ceilings near the wall (like the dome).
+const STARSHIP = {outer:9, inner:8, barrel:7, nose:10, height:50, vol:1000};
+// NASA Skylab Orbital Workshop (1973): a converted Saturn V rocket stage, 6.6 m wide and 14.6 m long, split by open aluminium
+// grid floors into 2 decks: crew quarters (sleep, wardroom, toilet) below, a big open workshop above. 3 crew, up to 84 days.
+const SKYLAB = {dia:6.6, len:14.6, crew:3, days:84};
+// Bigelow B330 inflatable habitat (never flown): 6.7 m wide inside when inflated, 13.7 m long, 330 m³, 6 crew. Lies like a tube.
+const B330 = {dia:6.7, len:13.7, vol:330, crew:6};
+const HATCH_R = 1.45;   // radius of the narrow end of each cone and of the hatch ring between modules (m)
+// ISS-style module: a tube lying on its side (the real ISS Destiny lab is 8.5 m long and 4.3 m wide, hatches in both end cones).
+// Seen from the end, the floor is a flat line below the centre; each box gets its real ceiling from the curved wall.
+// The floor height is chosen automatically to give the most usable volume (ties: the higher floor, which leaves
+// more room underneath for cables and pipes, as on the ISS).
+function tubeFloor(R, h0, D, H){
+  let best = null;
+  for (let f = 0; f < R; f += 0.01){
+    let vol = 0;
+    for (let d=0; d<D; d++){ const z = -f + d*h0;
+      for (let y=0; y<H; y++){ const u = y + .5 - H/2; if (Math.abs(u) >= R) continue;
+        const top = Math.sqrt(R*R - u*u), half = Math.sqrt(Math.max(0, R*R - z*z)), c = Math.min(h0, top - z);
+        if (Math.abs(u) <= half && c >= 1.2) vol += c; } }
+    if (!best || vol > best.vol + 1e-9) best = {f: +f.toFixed(2), vol};
+  }
+  return best.f;
+}
+
 // ---------- Sources used by the rules (shown in the UI) ----------
 const SRC = {
   hrp:   {short:'NASA HRP 2014', url:'https://ntrs.nasa.gov/api/citations/20140016951/downloads/20140016951.pdf'},
   rucker:{short:'NASA Rucker 2012', url:'https://ntrs.nasa.gov/api/citations/20140012748/downloads/20140012748.pdf'},
   std:   {short:'NASA-STD-3001', url:'https://www.nasa.gov/reference/8-0-architecture-vol-2'},
   acou:  {short:'NASA-STD-3001 acoustics', url:'https://www.nasa.gov/sites/default/files/atoms/files/acoustics_technical_brief_ochmo_0.pdf'},
+  eclss: {short:'NASA ECLSS fact sheet', url:'https://www.nasa.gov/wp-content/uploads/2025/08/g-657270-59-hp-environmental-control-and-life-support-system-eclss.pdf'},
   est:   {short:'estimate'},
   design:{short:'design rule'},
 };
@@ -429,7 +499,7 @@ const NASA_VOL = {
   EATING_PER_4_CREW: 11.26,         // Rucker 2012: eating / group volume for 4 crew
   LOGISTICS_PER_CREW_DAY: 20.02/(4*380), // Rucker 2012: 20.02 m³ logistics for 4 crew × 380 days
 };
- 
+
 // ---------- Cost model (rough, for comparing layouts) ----------
 // Structure mass per m³ of pressurized volume, from real modules:
 //   ISS Destiny (rigid): 14,515 kg / 104.77 m³ ≈ 139 kg/m³;  Bigelow B330 (inflatable): 23,000 kg / 330 m³ ≈ 70 kg/m³
@@ -445,7 +515,7 @@ const COST = {
 const money = usd => usd >= 1e9 ? '$'+fmt(usd/1e9,2)+' B' : '$'+fmt(usd/1e6,1)+' M';
 const tonnes = kg => fmt(kg/1000,1)+' t';
 function costOf(volM3, structure){ const kg = volM3 * COST.structures[structure||'rigid'].kgPerM3; return {kg, usd: kg*COST.launchPerKg}; }
- 
+
 function getRules(crew, days, height){
   const h = height || 2.5, med = days > 30, area = v => Math.ceil(v / h - 1e-9);
   return {
@@ -459,6 +529,8 @@ function getRules(crew, days, height){
       work:     Math.ceil(Math.max(2, Math.min(crew, 4) * 2)),
       medical:  (med || crew >= 4) ? Math.ceil(Math.max(2, crew * 0.5)) : 0,
       storage:  Math.max(2, area(crew * days * NASA_VOL.LOGISTICS_PER_CREW_DAY)),
+      // ISS: the US life support (water, oxygen, air) fills 4 racks in Tranquility + 1 in Destiny for 6 crew ≈ 1 m² of floor per rack
+      life:     med ? Math.ceil(crew * 5/6) : Math.max(1, Math.ceil(crew / 3)),
     },
     zoneSrc: {
       sleep:    med ? SRC.hrp : SRC.est,
@@ -468,6 +540,7 @@ function getRules(crew, days, height){
       work:     SRC.est,
       medical:  SRC.est,
       storage:  SRC.rucker,
+      life:     med ? SRC.eclss : SRC.est,
     },
     zoneWhy: {
       sleep:    med ? `${NASA_VOL.QUARTERS_PER_CREW} m³ private quarters per person` : '1.5 m² per person, shared on short missions',
@@ -477,6 +550,7 @@ function getRules(crew, days, height){
       work:     'workstations for up to 4 people at once (NASA HRP sizing), 2 m² each',
       medical:  'NASA studies let medical share the exercise area; we keep a small dedicated bay',
       storage:  'logistics scale with crew × days (4 crew × 380 days ≈ 20 m³)',
+      life:     med ? 'machines that recycle water and make oxygen: on the ISS 5 racks serve 6 crew (about 1 m² of floor per rack)' : 'air scrubbers and fans: short trips carry simpler, smaller machines (estimate)',
     },
     hygCompartments: (med && crew > 4) ? 2 : 1,
     quarterArea: med ? Math.max(1, Math.floor(NASA_VOL.QUARTERS_PER_CREW / h)) : 1,  // smallest useful private quarter
@@ -489,7 +563,7 @@ function getRules(crew, days, height){
     noiseHazard: NASA_NOISE.HAZARD,
   };
 }
- 
+
 /* ===================== STATE ===================== */
 let S = {crew:6, days:180, shape:'rect', a:12, b:8, height:2.5, structure:'rigid', decks:1, cells:[]};
 let G = null;           // geometry: {W,H,D,N,mask,heights}
@@ -501,7 +575,7 @@ let painting = false, lastPainted = -1, eraseDrag = false;
 let compareSel = new Set();
 let memStore = [];
 const STORE_KEY = 'habitat-layouts-v1';
- 
+
 const $ = s => document.querySelector(s);
 const fmt = (v,d=1) => (Math.round(v*10**d)/10**d).toLocaleString();
 // show a measured value next to its limit without rounding hiding the problem: 12.4 vs limit 12 → "12.4", not "12"
@@ -509,14 +583,71 @@ const vsLimit = (v, lim) => (v > lim && Math.round(v) <= lim) ? fmt(Math.ceil(v*
 const vsLimitNum = (v, lim) => (v > lim && Math.round(v) <= lim) ? Math.ceil(v*10)/10 : Math.round(v);
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const pct = v => Math.round(v*100) + '%';
- 
+
 /* ===================== GEOMETRY ===================== */
 // The habitat can have 1–3 decks (floors). Every deck uses the same W×H grid; cells are stored in one flat
 // array: index = deck*N + y*W + x  (N = W*H). In the dome, upper decks are smaller because the dome curves in.
 const DECK_FLOOR_ACOUSTIC = 15;   // sound through a solid deck floor counts as 15 m of distance (≈ −24 dB): estimate
 const LADDER_COLOR = '#f5d547';
+function b330MaxDecks(h0){
+  for (let D=3; D>1; D--){ const g = geometry({shape:'b330', a:14, b:B330.dia, height:h0, decks:D}); let ok = true;
+    for (let d=0; d<D && ok; d++){ let c=0; for (let i=d*g.N;i<(d+1)*g.N;i++) if (g.mask[i]) c++; if (c < 12) ok = false; }
+    if (ok) return D; }
+  return 1;
+}
 function geometry(st){
   const {shape} = st; const a = st.a, b = st.b, h0 = st.height, D = clamp(Math.round(st.decks||1), 1, 3);
+  if (shape === 'b330'){
+    // a wide tube lying on its side (like an ISS module but 6.7 m wide), decks stacked inside, rounded soft ends
+    const R = B330.dia/2, W = 14, H = 2*Math.ceil(R), N = W*H, f = tubeFloor(R, h0, D, H), mask = [], heights = [];
+    for (let d=0; d<D; d++){ const z = -f + d*h0;
+      for (let y=0; y<H; y++) for (let x=0; x<W; x++){
+        const u = y + .5 - H/2, top = Math.abs(u) < R ? Math.sqrt(R*R - u*u) : 0, half = Math.sqrt(Math.max(0, R*R - z*z));
+        const c = Math.min(h0, top - z), inside = Math.abs(u) < R && Math.abs(u) <= half && c >= 1.2;
+        mask.push(inside); heights.push(inside ? c : 0);
+      } }
+    const modules = [{name:'B330', role:'Bigelow inflatable habitat', len:B330.len, dia:B330.dia, cells:W, axis:'x', a0:0, a1:W, c:H/2, side:null, kids:0, endR:R}];
+    return {W, H, D, N, mask, heights, hullVol: B330.vol, floorDepth: f, modules, tunnels: [], Yc: H/2};
+  }
+  if (shape === 'tube'){
+    // Main line along x: [cone | body ... | cone] [hatch ring] [cone | body ... | cone] ...
+    // Side modules run along y from a node's port (up) or starboard (down) side, joined by a hatch ring.
+    const {main, sides} = stationModules(Math.round(a)), cols = [], modules = [], tunnels = [], pieces = [];
+    main.forEach((m, k) => {
+      if (k){ tunnels.push({axis:'x', a:cols.length}); cols.push('ring'); }
+      const x0 = cols.length; cols.push('cone'); for (let c=0; c<m.cells-2; c++) cols.push('body'); cols.push('cone');
+      modules.push({...m, axis:'x', a0:x0, a1:cols.length, side:null, kids:0});
+    });
+    const ext = sd => Math.max(0, ...sides.filter(q => q.side === sd).map(q => q.mod.cells + 1));
+    const top = Math.max(3, 2 + ext('port')), bot = Math.max(3, 2 + ext('starboard')), W = cols.length, H = top + bot, Yc = top, N = W*H;
+    modules.forEach(m => m.c = Yc); tunnels.forEach(t => t.c = Yc);
+    cols.forEach((t, x) => { const m = modules.find(q => x >= q.a0 && x < q.a1);
+      pieces.push({axis:'x', lo:x, c:Yc, t, r: t === 'body' ? m.dia/2 : HATCH_R}); });
+    for (const q of sides){
+      const P = modules.find(m => m.name === q.parent), cx = Math.round((P.a0 + 1 + P.a1 - 1)/2), up = q.side === 'port', m = q.mod; P.kids++;
+      const ringRow = up ? Yc - 3 : Yc + 2, step = up ? -1 : 1, rows = [];
+      tunnels.push({axis:'y', a:ringRow, c:cx}); pieces.push({axis:'y', lo:ringRow, c:cx, t:'ring', r:HATCH_R});
+      for (let k=0; k<m.cells; k++){ const y = ringRow + step*(k+1); rows.push(y);
+        pieces.push({axis:'y', lo:y, c:cx, t: k===0 || k===m.cells-1 ? 'cone' : 'body', r: k===0 || k===m.cells-1 ? HATCH_R : m.dia/2}); }
+      modules.push({...m, axis:'y', a0:Math.min(...rows), a1:Math.max(...rows)+1, c:cx, side:q.side, parent:q.parent, kids:0});
+    }
+    const f = tubeFloor(ISS_MODULES.Destiny.dia/2, h0, 1, 6), mask = new Array(N).fill(false), heights = new Array(N).fill(0), lock = new Array(N).fill(false);
+    for (const pc of pieces){
+      const n = pc.axis === 'x' ? H : W;
+      for (let k=0; k<n; k++){
+        const x = pc.axis === 'x' ? pc.lo : k, y = pc.axis === 'x' ? k : pc.lo, i = y*W + x;
+        if (x<0 || y<0 || x>=W || y>=H || mask[i]) continue;
+        const u = k + .5 - pc.c, r = pc.r, narrow = pc.t !== 'body';
+        const topz = Math.abs(u) < r ? Math.sqrt(r*r - u*u) : 0, half = Math.sqrt(Math.max(0, r*r - f*f));
+        const c = Math.min(h0, topz + f), inside = (narrow ? Math.abs(u) < 1 : Math.abs(u) < r && Math.abs(u) <= half) && c >= 1.2;
+        if (inside){ mask[i] = true; heights[i] = c; lock[i] = pc.t === 'ring'; }
+      }
+    }
+    // pressurised volume: cylinder bodies + cone frustums (1 m long, module radius → hatch radius) + hatch rings
+    const frustum = (r1, r2) => Math.PI/3*(r1*r1 + r1*r2 + r2*r2);
+    const hullVol = modules.reduce((v, m) => v + Math.PI*(m.dia/2)**2*(m.cells-2) + 2*frustum(m.dia/2, HATCH_R), 0) + tunnels.length*Math.PI*HATCH_R**2;
+    return {W, H, D:1, N, mask, heights, lock, hullVol, floorDepth: f, modules, tunnels, Yc};
+  }
   const W = a, H = shape === 'rect' ? b : a, N = W*H;
   const mask = [], heights = [];
   const R = a/2, r2 = b/2;
@@ -526,6 +657,8 @@ function geometry(st){
       const dx = x + .5 - W/2, dy = y + .5 - H/2, r = Math.hypot(dx, dy);
       let inside = true, h = h0;
       if (shape === 'cylinder') inside = r <= R;
+      else if (shape === 'skylab') inside = r <= SKYLAB.dia/2;
+      else if (shape === 'starship'){ const zt = STARSHIP.barrel + STARSHIP.nose*Math.sqrt(Math.max(0, 1 - (r/R)**2)); h = Math.min(h0, zt - z0); inside = r <= R && h >= 1.2; }
       else if (shape === 'dome'){ h = Math.min(h0, Math.sqrt(Math.max(0, R*R - r*r)) - z0); inside = r <= R && (d === 0 || h >= 1.2); }
       else if (shape === 'ring') inside = r <= R && r >= r2;
       else if (shape === 'lshape') inside = x < b || y >= H - b;
@@ -553,6 +686,7 @@ function ladderLinks(i, cells=S.cells, g=G){
   if (d < g.D-1 && g.mask[i+N] && cells[i+N] === 'ladder') r.push(i+N);
   return r;
 }
+function stripLocked(){ if (G && G.lock) for (let i=0;i<S.cells.length;i++) if (G.lock[i]) S.cells[i] = null; }
 function cleanupLadders(){ // a ladder with nothing above or below it is removed
   let ch = true;
   while (ch){ ch = false; for (let i=0;i<S.cells.length;i++) if (S.cells[i]==='ladder' && !ladderLinks(i).length){ S.cells[i] = null; ch = true; } }
@@ -570,9 +704,9 @@ function applyGeometry(old){
   }
   S.cells = cells;
   for (let i=0; i<cells.length; i++) if (cells[i] === 'exit' && !isBoundary(i)) cells[i] = null;
-  cleanupLadders();
+  stripLocked(); cleanupLadders();
 }
- 
+
 /* ===================== ANALYSIS ===================== */
 function makeHeap(){
   const heap = [];
@@ -632,7 +766,7 @@ function egressSearch(srcs, walk){
   }
   return {dist, parent};
 }
- 
+
 function analyze(){
   const {W,H,D,N,mask,heights} = G, cells = S.cells, n = D*N;
   const R = getRules(S.crew, S.days, S.height);
@@ -644,17 +778,17 @@ function analyze(){
   const nb4 = i => { const dk=(i/N)|0, l=i-dk*N, x=l%W, y=(l/W)|0, r=[];
     for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx, ny=y+dy; if (nx<0||ny<0||nx>=W||ny>=H) continue; const j=dk*N+ny*W+nx; if (mask[j]) r.push(j); }
     return r; };
- 
+
   // ---- counts & volume (all decks)
   const count = {}; ZK.forEach(k => count[k]=0);
-  let interior=0, open=0, nhv=0, totalVol=0; const exits=[], openCells=[], ladderCells=[];
+  let interior=0, open=0, nhv=0, totalVol = G.hullVol || 0; const exits=[], openCells=[], ladderCells=[];   // tube: real pressurised volume π·r²·L
   for (let i=0;i<n;i++){
-    if (!mask[i]) continue; interior++; totalVol += heights[i];
+    if (!mask[i]) continue; interior++; if (!G.hullVol) totalVol += heights[i];
     const v = cells[i];
     if (v==='exit') exits.push(i);
     else if (v==='ladder'){ ladderCells.push(i); open++; }
     else if (v) count[v]++; else { open++; openCells.push(i); }
-    if (v !== 'storage') nhv += heights[i];
+    if (v !== 'storage' && v !== 'life') nhv += heights[i];   // racks of stores and machines are not living space
   }
   const target = R.volPerCrew * S.crew, ratio = nhv / target;
   const volScore = Math.min(1, ratio);
@@ -664,7 +798,7 @@ function analyze(){
     `A ${S.days}-day mission needs at least ${R.volPerCrew} m³ per person (${volSrcTxt}), so ${fmt(target,0)} m³ in total. You have ${fmt(nhv,0)} m³. Storage does not count as living volume.`,
     D>1 ? `Enlarge the habitat by about ${Math.ceil((target-nhv)/S.height)} m² of floor, add a deck, reduce the crew, or move storage out of the living area.`
         : `Enlarge the habitat by about ${Math.ceil((target-nhv)/S.height)} m² of floor, reduce the crew, or move storage out of the living area.`, [], WEIGHTS.volume*(1-volScore));
- 
+
   // ---- zone sizes
   const reqKeys = ZK.filter(k => R.zones[k] > 0);
   let zsum = 0;
@@ -702,11 +836,11 @@ function analyze(){
   }
   zoneScore *= Math.max(.5, 1 - .06*extraPieces);
   const low = [];
-  for (let i=0;i<n;i++) if (mask[i] && isZone(cells[i]) && cells[i]!=='storage' && heights[i] < MIN_CEILING) low.push(i);
+  for (let i=0;i<n;i++) if (mask[i] && isZone(cells[i]) && cells[i]!=='storage' && cells[i]!=='life' && heights[i] < MIN_CEILING) low.push(i);
   if (low.length) add('zones','warn',`${low.length} m² of crew zones under a low ceiling`,
     `Near the curved wall the ceiling is below ${MIN_CEILING} m. Crew can't stand there.`,
     'Move those zones toward the centre and use the low edge for storage.', low, 2);
- 
+
   // ---- adjacency (walls shared on the same deck)
   const pairs = {};
   for (let d=0; d<D; d++) for (let y=0;y<H;y++) for (let x=0;x<W;x++){
@@ -733,7 +867,7 @@ function analyze(){
     if (p) add('adjacency','pass',`Good pairing: ${ZONES[s.a].name} + ${ZONES[s.b].name}`, s.why[0].toUpperCase()+s.why.slice(1)+'.', null, [...p.cells]);
   }
   const adjScore = Math.max(0, 1-pen);
- 
+
   // ---- noise (spreads across a deck, and up/down through floors and ladder openings)
   const srcDist = {};
   for (const k of ZK) if (ZONES[k].noise){ const src = idxOf(k); if (src.length) srcDist[k] = noiseDist(src); }
@@ -775,7 +909,7 @@ function analyze(){
     add('noise','fail',`Hearing hazard: ${hazard.length} m² at ${R.noiseHazard} dBA or more`,`NASA-STD-3001 (V2 6077) requires every area to stay below ${R.noiseHazard} dBA at all times.`,'Spread the loud equipment out or surround it with storage.',hazard,WEIGHTS.noise*.5);
   } else add('noise','pass',`No hearing hazard (everywhere below ${R.noiseHazard} dBA)`,'NASA-STD-3001 V2 6077 hazard limit is met.');
   if (!qTotal) add('noise','fail','Noise cannot be assessed','No sleep, medical or work zone has been placed yet.','Place the sleep quarters first.',[],WEIGHTS.noise);
- 
+
   // ---- egress (walk on each deck, climb ladders between decks)
   const walk = i => mask[i] && cells[i] !== 'storage';
   const eg = egressSearch(exits, walk);
@@ -856,7 +990,7 @@ function analyze(){
       } else add('egress','pass',`Exits${on} are well separated`,`${fmt(far,0)} m apart, so one hazard can't block both.`,null,hs);
     }
   }
- 
+
   // ---- efficiency / cost
   const circ = interior ? open/interior : 0;
   let eff = circ < .15 ? circ/.15 : circ > .40 ? Math.max(0, 1-(circ-.40)/.4) : 1;
@@ -866,12 +1000,12 @@ function analyze(){
     add('efficiency','warn',`${pct(circ)} of the floor is unassigned`,`About ${fmt(spare,0)} m³ more empty space than a comfortable 30% circulation. That's roughly ${tonnes(c.kg)} of structure and ${money(c.usd)} of launch cost.`,D>1?'Assign that space to zones, or use fewer decks or a smaller habitat.':'Assign that space to zones, or choose a smaller habitat.',openCells,WEIGHTS.efficiency*(1-eff));
   }
   else add('efficiency','pass',`${pct(circ)} circulation space`,'A healthy balance between zones and corridors (15–40%).');
+  // a habitat much bigger than the crew needs is a note (cost advice), not a layout mistake: it does not lower the score
   if (ratio > 2.5){
-    const f = Math.max(.5, 1-(ratio-2.5)*.3); eff *= f;
     const extra = nhv - target*1.5, c = costOf(extra, S.structure);
-    add('efficiency','warn','Habitat is oversized',`It has ${pct(ratio)} of the living volume this crew needs. Trimming to 1.5× the need would save about ${fmt(extra,0)} m³, roughly ${tonnes(c.kg)} and ${money(c.usd)} of launch cost.`,D>1?'Try fewer decks or a smaller shape, or plan for a bigger crew.':'Try a smaller shape, or plan for a bigger crew.',[],WEIGHTS.efficiency*(1-f));
+    add('efficiency','pass',`Note: habitat is larger than this crew needs`,`It has ${pct(ratio)} of the living volume this crew needs. A habitat trimmed to 1.5× the need would save about ${fmt(extra,0)} m³, roughly ${tonnes(c.kg)} and ${money(c.usd)} of launch cost. This does not change the layout score.`);
   }
- 
+
   const cats = {volume:volScore, zones:zoneScore, adjacency:adjScore, noise:noiseScore, egress:egScore, efficiency:eff};
   let raw = 0; for (const k in WEIGHTS) raw += WEIGHTS[k]*cats[k];
   // Safety caps: a layout with a serious safety problem can't score well, however good the rest is.
@@ -903,13 +1037,14 @@ function analyze(){
       sleepNoise: count.sleep ? Math.max(...idxOf('sleep').map(i=>noiseMap[i])) : null,
       issues: checks.filter(c=>c.status!=='pass').length}};
 }
- 
+
 /* ===================== RENDER ===================== */
 let cellEls = [];
 function buildGrid(){
   const grid = $('#grid'), wrap = $('#gridwrap');
-  const avail = Math.max(240, wrap.clientWidth - 30);
-  const cs = clamp(Math.floor((avail - G.W) / G.W), 14, 38);
+  const mg = hullMargins(), avail = Math.max(240, wrap.clientWidth - 30 - mg.l - mg.r);
+  const cs = clamp(Math.min(Math.floor((avail - G.W) / G.W), G.H > 12 ? Math.floor(660 / G.H) : 99), 14, 38);
+  grid.style.margin = `${mg.t}px ${mg.r}px ${mg.b}px ${mg.l}px`;
   grid.style.setProperty('--cs', cs+'px');
   grid.style.gridTemplateColumns = `repeat(${G.W}, ${cs}px)`;
   grid.innerHTML = ''; cellEls = [];
@@ -917,20 +1052,22 @@ function buildGrid(){
   const frag = document.createDocumentFragment(), off = curDeck*G.N;
   for (let i=0;i<G.N;i++){
     const d = document.createElement('div'), g = off + i;
-    d.className = 'c' + (G.mask[g] ? '' : ' out') + (G.mask[g] && G.heights[g] < MIN_CEILING ? ' low' : '');
+    d.className = 'c' + (G.mask[g] ? '' : ' out') + (G.mask[g] && G.heights[g] < MIN_CEILING ? ' low' : '') + (G.lock && G.lock[g] ? ' lock' : '');
+    if (G.lock && G.lock[g]) d.title = 'Hatch ring between modules: keep clear';
     d.dataset.i = i;   // local index on the current deck
     d.innerHTML = '<div class="ov"></div><span class="tx"></span>';
     frag.appendChild(d); cellEls.push(d);
   }
   grid.appendChild(frag);
+  requestAnimationFrame(renderHull);
 }
- 
+
 function heat(db){ // 35 → 75 dB : green → yellow → red
   const t = clamp((db-35)/40, 0, 1);
   const h = 130 - 130*t;
   return `hsla(${h},90%,50%,.72)`;
 }
- 
+
 function renderGrid(){
   const cs = parseInt(getComputedStyle($('#grid')).getPropertyValue('--cs')) || 24;
   const bt = overlay==='block' ? SAFE.hatch.tests.find(t => t.hatch===blockSel) : null, newTrap = new Set(bt ? bt.trapped : []);
@@ -973,15 +1110,188 @@ function renderGrid(){
   const lg = $('#legend');
   const lgMode = overlay==='3d' ? (v3.mode==='zones' ? 'none' : v3.mode) : overlay;
   if (lgMode==='noise') lg.innerHTML = `<span>35 dB</span><div class="bar" style="background:linear-gradient(90deg,${heat(35)},${heat(55)},${heat(75)})"></div><span>75 dB</span><span>· NASA-STD-3001 limits: sleep ${A.R.noiseLimit.sleep} dBA (${A.R.noiseLabel.sleep}), medical/work ${A.R.noiseLimit.work} dBA (NC-50), hazard ${A.R.noiseHazard} dBA · storage absorbs sound</span>`;
-  else if (lgMode==='rad') lg.innerHTML = `<span>Number = sides (of 4) with storage between this box and the hull:</span><span style="color:#ff5c6c">■ 0</span><span style="color:#ff9628">■ 1</span><span style="color:#ffd73c">■ 2</span><span style="color:#3ddc84">■ 3–4</span><span>🛏 sleep box · □ outlined: best storm-shelter spot</span>`;
+  else if (lgMode==='rad') lg.innerHTML = `<span>Number = sides (of 4) with at least ${RAD_GCM2} g/cm² of supplies between this box and the hull:</span><span style="color:#ff5c6c">■ 0</span><span style="color:#ff9628">■ 1</span><span style="color:#ffd73c">■ 2</span><span style="color:#3ddc84">■ 3–4</span><span>🛏 sleep box · □ outlined: best storm-shelter spot</span>`;
   else if (lgMode==='block') lg.innerHTML = `<span style="color:#5aaaff">■ distance to the other exits</span><span style="color:#ff9628">■ too far (&gt;${A.R.maxEgress} m)</span><span style="color:#ff283c">■ trapped while this hatch is blocked</span><span>⛔ blocked hatch</span>`;
   else if (lgMode==='egress') lg.innerHTML = `<span style="color:#5aaaff">■ distance to nearest hatch</span><span style="color:#ff9628">■ too far (&gt;${A.R.maxEgress} m)</span><span style="color:#ff283c">■ trapped (no way to any exit)</span><span style="color:#ff6b7a">▨ storage nobody can reach</span><span>□ outlined: longest escape route</span>`;
   else lg.innerHTML = ZK.map(k=>`<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:${ZONES[k].color}"></span> ${ZONES[k].name}</span>`).join('') + `<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:#f2f4f8"></span> Hatch</span>` +
     (G.D>1 ? `<span><span class="sw" style="display:inline-block;vertical-align:-3px;background:${LADDER_COLOR}"></span> Ladder (▲ up · ▼ down)</span>` : '') +
     (G.heights.some((h,i)=>G.mask[i]&&h<MIN_CEILING)?'<span>▨ low ceiling</span>':'');
 }
- 
+
+// End view of the ISS-style station: the round hull of one module, the floor, and the curved ceiling over the boxes.
+let xsecMod = 1;   // which module the end view shows (index into G.modules)
+function renderXsec(){
+  const box = $('#xsec');
+  if (S.shape === 'starship' && overlay !== '3d') return renderShipSide(box);
+  if (S.shape === 'skylab' && overlay !== '3d') return renderSkylabSide(box);
+  if (S.shape === 'b330' && overlay !== '3d') return renderB330End(box);
+  if (S.shape !== 'tube' || overlay === '3d'){ box.style.display = 'none'; return; }
+  box.style.display = '';
+  xsecMod = clamp(xsecMod, 0, G.modules.length-1);
+  const m = G.modules[xsecMod], R = m.dia/2, f = G.floorDepth, sc = 64/2.3, cx = 80, cy = 78, P = v => v*sc, along = m.a0 + 1;
+  let svg = `<svg width="160" height="156" viewBox="0 0 160 156" role="img" aria-label="End view of the ${m.name} module">`;
+  svg += `<defs><clipPath id="hullClip"><circle cx="${cx}" cy="${cy}" r="${P(R)-1}"/></clipPath></defs>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="${P(R)}" fill="#0f131d"/><g clip-path="url(#hullClip)">`;
+  for (let k=-3; k<3; k++){
+    const x = m.axis==='x' ? along : m.c + k, y = m.axis==='x' ? m.c + k : along;
+    if (x<0 || y<0 || x>=G.W || y>=G.H) continue; const i = y*G.W + x; if (!G.mask[i]) continue;
+    const c = G.heights[i];
+    svg += `<rect x="${cx + P(k)+.5}" y="${cy - P(c - f)}" width="${P(1)-1}" height="${P(c)}" fill="rgba(90,170,255,.55)"/>`; }
+  const half = Math.sqrt(Math.max(0, R*R - f*f));
+  svg += `<line x1="${cx-P(half)}" y1="${cy+P(f)}" x2="${cx+P(half)}" y2="${cy+P(f)}" stroke="#5aaaff" stroke-width="2.5"/>`;
+  svg += `</g><circle cx="${cx}" cy="${cy}" r="${P(R)}" fill="none" stroke="#8a94aa" stroke-width="2"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="${P(HATCH_R*.55)}" fill="none" stroke="#8a94aa" stroke-width="1" stroke-dasharray="3 3"/>`;
+  svg += `<text x="${cx}" y="152" fill="#8a94aa" font-size="10" text-anchor="middle">⌀ ${fmt(m.dia,1)} m</text></svg>`;
+  const tabs = G.modules.length > 1 ? `<div class="xtabs">${G.modules.map((q,k)=>`<button data-xm="${k}" class="${k===xsecMod?'on':''}">${q.name}</button>`).join('')}</div>` : '';
+  const where = m.side ? ` · on the ${m.side} side of ${m.parent}` : '';
+  box.innerHTML = svg + `<div>${tabs}<b>${m.name}</b> · ${m.role}${where} · real size ${fmt(m.len,1)} m long, ${fmt(m.dia,1)} m wide (on the grid: ${m.cells} m).<br>
+    End view, like looking in through the hatch. The floor sits ${fmt(f,2)} m below the centre line, leaving room underneath for cables and pipes, as on the ISS.
+    Each box gets its real ceiling from the curved wall. Both ends of every module are cones that narrow to the hatch${G.modules.length>1 ? ', and the striped hatch rings between modules must stay clear' : ''}.
+    <br><span style="font-size:11px">Station size ${S.a} of 5: ${STATION_SIZES[S.a-1]}. Port side is drawn on top.</span></div>`;
+}
+$('#xsec').addEventListener('click', e => { const b = e.target.closest('[data-xm]'); if (!b) return; xsecMod = +b.dataset.xm; renderXsec(); });
+
+// Starship side view: the ship's upper part (barrel + nose + flaps) with the decks drawn to scale, current deck in blue
+function renderShipSide(box){
+  box.style.display = '';
+  const sc = 7.2, W = 150, Hh = 196, cx = W/2, R = STARSHIP.outer/2, ri = STARSHIP.inner/2, yb = Hh - 30, P = v => v*sc;   // yb = bay floor
+  const top = STARSHIP.barrel + STARSHIP.nose, h0 = S.height;
+  const noseX = z => z <= STARSHIP.barrel ? R : R*Math.sqrt(Math.max(0, 1 - ((z - STARSHIP.barrel)/STARSHIP.nose)**2));
+  let path = `M${cx-P(R)},${yb+P(1.8)} L${cx-P(R)},${yb-P(STARSHIP.barrel)}`;
+  for (let z=STARSHIP.barrel; z<=top+.001; z+=.25) path += ` L${cx-P(noseX(z))},${yb-P(z)}`;
+  for (let z=top; z>=STARSHIP.barrel-.001; z-=.25) path += ` L${cx+P(noseX(z))},${yb-P(z)}`;
+  path += ` L${cx+P(R)},${yb+P(1.8)} Z`;
+  let svg = `<svg width="${W}" height="${Hh}" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Side view of the Starship-style habitat">`;
+  svg += `<defs><linearGradient id="shipG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5d6577"/><stop offset=".45" stop-color="#c7ccd6"/><stop offset="1" stop-color="#4a5163"/></linearGradient>
+    <clipPath id="shipClip"><path d="${path}"/></clipPath></defs>`;
+  // forward flaps (two small fins near the nose), then the body
+  svg += `<path d="M${cx-P(R)},${yb-P(STARSHIP.barrel+1)} l${-P(1.6)},${P(2.2)} l0,${P(3)} l${P(1.6)},${-P(.6)} Z" fill="#3d4352"/>`;
+  svg += `<path d="M${cx+P(R)},${yb-P(STARSHIP.barrel+1)} l${P(1.6)},${P(2.2)} l0,${P(3)} l${-P(1.6)},${-P(.6)} Z" fill="#3d4352"/>`;
+  svg += `<path d="${path}" fill="url(#shipG)" stroke="#e7ebf4" stroke-width="1.2"/>`;
+  svg += `<g clip-path="url(#shipClip)">`;
+  for (let d=0; d<G.D; d++){
+    const z0 = d*h0, z1 = z0 + h0, on = d === curDeck;
+    // inner space of this deck (follows the nose where it narrows)
+    let pts = []; for (let z=z0; z<=z1+.001; z+=.25) pts.push([cx-P(Math.min(ri, noseX(z)-.5)), yb-P(z)]);
+    for (let z=z1; z>=z0-.001; z-=.25) pts.push([cx+P(Math.min(ri, noseX(z)-.5)), yb-P(z)]);
+    svg += `<polygon points="${pts.map(q=>q.join(',')).join(' ')}" fill="${on ? 'rgba(90,170,255,.75)' : 'rgba(30,36,52,.85)'}"/>`;
+    svg += `<line x1="${cx-P(ri)}" y1="${yb-P(z0)}" x2="${cx+P(ri)}" y2="${yb-P(z0)}" stroke="${on?'#ffffff':'#8a94aa'}" stroke-width="${on?2:1}"/>`;
+    svg += `<text x="${cx}" y="${yb-P(z0+h0/2)+4}" fill="${on?'#0b0e15':'#c9d1e3'}" font-size="10" font-weight="700" text-anchor="middle">Deck ${d+1}</text>`;
+  }
+  svg += `</g><line x1="${cx-P(R)}" y1="${yb+P(1.2)}" x2="${cx+P(R)}" y2="${yb+P(1.2)}" stroke="#2a3142" stroke-width="2" stroke-dasharray="4 3"/>`;
+  svg += `<text x="${cx}" y="${Hh-4}" fill="#8a94aa" font-size="10" text-anchor="middle">⌀ ${STARSHIP.outer} m · fuel tanks below</text></svg>`;
+  const lows = []; for (let i=curDeck*G.N; i<(curDeck+1)*G.N; i++) if (G.mask[i] && G.heights[i] < MIN_CEILING) lows.push(i);
+  box.innerHTML = svg + `<div><b>Starship-style habitat</b> · side view, decks to scale (deck height ${fmt(h0,1)} m).<br>
+    Real SpaceX Starship: ${STARSHIP.outer} m wide and about ${STARSHIP.height} m tall. Its payload bay is ${STARSHIP.inner} m wide inside and 17 m tall; the crew version turns it into a pressurised home of about ${fmt(STARSHIP.vol,0)} m³ (a little more than the whole ISS).
+    Decks stack from the bay floor; above ${STARSHIP.barrel} m the nose narrows, so a high deck gets low ceilings near the wall${lows.length ? `: <b>${lows.length} box${lows.length>1?'es':''} on this deck ${lows.length>1?'are':'is'} lower than 1.9 m</b>` : ''}.
+    Blue = the deck you are editing. Ladders connect the decks.</div>`;
+}
+// Skylab side view: the workshop standing up, crew quarters below, open workshop above, airlock and docking adapter on top
+function renderSkylabSide(box){
+  box.style.display = '';
+  const W = 150, Hh = 196, sc = 9.2, cx = W/2, R = SKYLAB.dia/2, P = v => v*sc, yb = Hh - 24, h0 = S.height;
+  const z1 = Math.max(2*h0, 9.6);   // the real workshop above the crew quarters was much taller than one deck
+  let svg = `<svg width="${W}" height="${Hh}" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Side view of the Skylab-style workshop">
+    <defs><linearGradient id="skyG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6b5f45"/><stop offset=".45" stop-color="#e6dcc2"/><stop offset="1" stop-color="#5b5038"/></linearGradient></defs>`;
+  // solar wing (the one that survived launch), airlock + docking adapter on top
+  svg += `<rect x="${cx+P(R)}" y="${yb-P(z1*.75)}" width="${P(3.2)}" height="${P(5.5)}" fill="#24324f" stroke="#4d6a9e"/>`;
+  svg += `<rect x="${cx-P(1.6)}" y="${yb-P(z1+.6)-P(3)}" width="${P(3.2)}" height="${P(3)}" rx="3" fill="#c9cfdb" stroke="#e7ebf4"/>`;
+  svg += `<rect x="${cx-P(R)}" y="${yb-P(z1+.6)}" width="${P(2*R)}" height="${P(z1+.6)+P(.6)}" rx="${P(1.2)}" fill="url(#skyG)" stroke="#e7ebf4" stroke-width="1.2"/>`;
+  const decks = [[0, h0, 'Quarters'], [h0, z1, 'Workshop']];
+  decks.forEach(([a, b, nm], d) => { const on = d === curDeck;
+    svg += `<rect x="${cx-P(R)+3}" y="${yb-P(b)}" width="${P(2*R)-6}" height="${P(b-a)}" fill="${on ? 'rgba(90,170,255,.75)' : 'rgba(30,36,52,.82)'}"/>`;
+    svg += `<line x1="${cx-P(R)+3}" y1="${yb-P(a)}" x2="${cx+P(R)-3}" y2="${yb-P(a)}" stroke="${on?'#fff':'#8a94aa'}" stroke-width="${on?2:1}" stroke-dasharray="3 2"/>`;
+    svg += `<text x="${cx}" y="${yb-P((a+b)/2)+4}" fill="${on?'#0b0e15':'#c9d1e3'}" font-size="10" font-weight="700" text-anchor="middle">${nm}</text>`; });
+  svg += `<text x="${cx}" y="${Hh-6}" fill="#8a94aa" font-size="10" text-anchor="middle">⌀ ${SKYLAB.dia} m · waste tank below</text></svg>`;
+  box.innerHTML = svg + `<div><b>Skylab-style workshop</b> · side view (deck 1 = crew quarters, deck 2 = workshop).<br>
+    NASA's Skylab (1973) was a Saturn V rocket stage turned into a home: ${SKYLAB.dia} m wide and ${SKYLAB.len} m long. Open aluminium grid floors split it into
+    2 decks: crew quarters below (sleep compartments, wardroom, toilet) and a big open workshop above for experiments, storage and exercise.
+    ${SKYLAB.crew} astronauts lived there for up to ${SKYLAB.days} days. In the app both decks use your deck height; the real workshop was much taller.
+    Blue = the deck you are editing.</div>`;
+}
+// B330 end view: the round inflated shell, both deck floors, the curved ceiling over the boxes
+function renderB330End(box){
+  box.style.display = '';
+  const R = B330.dia/2, H = G.H, f = G.floorDepth, h0 = S.height, sc = 64/R, cx = 80, cy = 78, P = v => v*sc, xb = 6;
+  let svg = `<svg width="160" height="156" viewBox="0 0 160 156" role="img" aria-label="End view of the B330">`;
+  svg += `<defs><clipPath id="hullClipB"><circle cx="${cx}" cy="${cy}" r="${P(R)-1}"/></clipPath></defs>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="${P(R)+4}" fill="#e9e3d3" opacity=".25"/><circle cx="${cx}" cy="${cy}" r="${P(R)}" fill="#0f131d"/><g clip-path="url(#hullClipB)">`;
+  for (let d=0; d<G.D; d++){
+    const z = -f + d*h0, on = d===curDeck;
+    for (let y=0; y<H; y++){ const i = d*G.N + y*G.W + xb; if (!G.mask[i]) continue;
+      const u = y + .5 - H/2, x0 = cx + P(u - .5), c = G.heights[i];
+      svg += `<rect x="${x0+.5}" y="${cy - P(z + c)}" width="${P(1)-1}" height="${P(c)}" fill="${on ? 'rgba(90,170,255,.55)' : 'rgba(138,148,170,.28)'}"/>`; }
+    const half = Math.sqrt(Math.max(0, R*R - z*z));
+    svg += `<line x1="${cx-P(half)}" y1="${cy-P(z)}" x2="${cx+P(half)}" y2="${cy-P(z)}" stroke="${on?'#5aaaff':'#c9d1e3'}" stroke-width="${on?2.5:1.5}"/>`;
+  }
+  svg += `</g><circle cx="${cx}" cy="${cy}" r="${P(R)}" fill="none" stroke="#d9d2bf" stroke-width="3"/>`;
+  svg += `<text x="${cx}" y="152" fill="#8a94aa" font-size="10" text-anchor="middle">⌀ ${fmt(B330.dia,1)} m inflated</text></svg>`;
+  box.innerHTML = svg + `<div><b>B330 inflatable habitat</b> · end view, like looking in through the hatch.<br>
+    Bigelow Aerospace designed the B330 (never launched) as a soft-walled module that launches folded and inflates in orbit to ${B330.dia} m wide and ${B330.len} m long,
+    giving ${B330.vol} m³ for ${B330.crew} crew: about 3 times the room of an ISS Destiny lab. It is wide enough for ${G.D>1 ? `${G.D} decks` : '2 decks at a lower deck height'}:
+    the floor of deck 1 sits ${fmt(f,2)} m below the centre line, and each box gets its real ceiling from the curved wall.${G.D>1 ? ' Blue = the deck you are editing.' : ''}</div>`;
+}
+// space around the grid for the module names (station shape only)
+function hullMargins(){
+  if (S.shape === 'starship' || S.shape === 'skylab') return {t:46, r:24, b:24, l:24};   // room for the round hull and its title
+  if (S.shape === 'b330') return {t:0, r:0, b:0, l:0};
+  if (S.shape !== 'tube' || !G || !G.modules) return {t:0, r:0, b:0, l:0};
+  const M = G.modules, main = M.filter(m => m.axis==='x');
+  return {t: M.some(m => m.side==='port') ? 22 : 0, b: M.some(m => m.side==='starboard') ? 22 : 0,
+          l: main[0].kids ? 92 : 0, r: main.length > 1 && main[main.length-1].kids ? 92 : 0};
+}
+// Real module outlines drawn under the editor grid (station shape only): hulls, end cones, hatch rings, names and sizes.
+function renderHull(){
+  const svg = $('#hullSvg');
+  if (!svg) return;
+  if ((S.shape === 'starship' || S.shape === 'skylab') && cellEls.length){   // the round wall round the deck
+    const wrap = $('#gridwrap'), wr = wrap.getBoundingClientRect(), r0 = cellEls[0].getBoundingClientRect(), r1 = cellEls[G.W+1].getBoundingClientRect();
+    const p = r1.left - r0.left, cx = r0.left - wr.left + wrap.scrollLeft + G.W/2*p - .5, cy = r0.top - wr.top + wrap.scrollTop + G.H/2*p - .5;
+    svg.style.display = ''; svg.setAttribute('width', wrap.scrollWidth); svg.setAttribute('height', wrap.scrollHeight);
+    const fs = clamp(Math.round(p*.36), 10, 13);
+    if (S.shape === 'skylab'){ const Rs = SKYLAB.dia/2 + .65;
+      svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${Rs*p}" fill="#1b2130" stroke="#e6dcc2" stroke-width="3"/>
+        <text x="${cx}" y="${cy - Rs*p - 10}" fill="#e7ebf4" font-size="${fs}" font-weight="700" text-anchor="middle">Skylab · deck ${curDeck+1} of 2: ${curDeck ? 'workshop' : 'crew quarters'}  <tspan fill="#8a94aa" font-weight="400">${SKYLAB.dia} m wide</tspan></text>`;
+      return; }
+    svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${STARSHIP.outer/2*p}" fill="#1b2130" stroke="#c7ccd6" stroke-width="3"/>
+      <circle cx="${cx}" cy="${cy}" r="${STARSHIP.inner/2*p}" fill="none" stroke="#7d8597" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="${cx}" y="${cy - STARSHIP.outer/2*p - 8}" fill="#e7ebf4" font-size="${fs}" font-weight="700" text-anchor="middle">Starship · deck ${curDeck+1} of ${G.D}  <tspan fill="#8a94aa" font-weight="400">${STARSHIP.outer} m wide (${STARSHIP.inner} m inside)</tspan></text>`;
+    return;
+  }
+  if (!G.modules || !cellEls.length){ svg.style.display = 'none'; return; }
+  const wrap = $('#gridwrap'), wr = wrap.getBoundingClientRect(), r0 = cellEls[0].getBoundingClientRect(), r1 = cellEls[G.W+1].getBoundingClientRect();
+  const p = r1.left - r0.left, ox = r0.left - wr.left + wrap.scrollLeft, oy = r0.top - wr.top + wrap.scrollTop;
+  const X = x => ox + x*p - .5, Y = y => oy + y*p - .5;
+  const at = (m, along, across) => m.axis==='x' ? [X(along), Y(across)] : [X(across), Y(along)];   // (along the module, across it) → screen
+  svg.style.display = ''; svg.setAttribute('width', wrap.scrollWidth); svg.setAttribute('height', wrap.scrollHeight);
+  let out = `<defs><linearGradient id="hullG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4256"/><stop offset=".5" stop-color="#232a3a"/><stop offset="1" stop-color="#171c28"/></linearGradient>
+    <linearGradient id="hullGv" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3a4256"/><stop offset=".5" stop-color="#232a3a"/><stop offset="1" stop-color="#171c28"/></linearGradient></defs>`;
+  const H = HATCH_R, fs = clamp(Math.round(p*.42), 9, 13), poly = pts => pts.map(q => q.join(',')).join(' ');
+  for (const t of G.tunnels){   // hatch ring between two modules
+    const m = {axis:t.axis}, A = at(m, t.a, t.c - H), B = at(m, t.a+1, t.c + H), C1 = at(m, t.a+.5, t.c - H), C2 = at(m, t.a+.5, t.c + H);
+    out += `<rect x="${Math.min(A[0],B[0])}" y="${Math.min(A[1],B[1])}" width="${Math.abs(B[0]-A[0])}" height="${Math.abs(B[1]-A[1])}" rx="3" fill="#2a3142" stroke="#9aa6c2" stroke-width="1.5"/>`;
+    out += `<line x1="${C1[0]}" y1="${C1[1]}" x2="${C2[0]}" y2="${C2[1]}" stroke="#9aa6c2" stroke-width="1" stroke-dasharray="2 3"/>`;
+  }
+  const label = (x, y, anchor, m) => `<text x="${x}" y="${y}" fill="#e7ebf4" font-size="${fs}" font-weight="700" text-anchor="${anchor}">${m.name}</text>` +
+    `<text x="${x}" y="${y+fs+1}" fill="#8a94aa" font-size="${fs-1}" text-anchor="${anchor}">${fmt(m.len,1)} m × ⌀ ${fmt(m.dia,1)} m</text>`;
+  const main = G.modules.filter(m => m.axis==='x');
+  for (const m of G.modules){
+    const r = m.dia/2, a0 = m.a0, a1 = m.a1, c = m.c, E = m.endR ?? H;   // E = radius at the ends (cones narrow to the hatch; B330 ends stay round)
+    out += `<polygon points="${poly([at(m,a0,c-E), at(m,a0+1,c-r), at(m,a1-1,c-r), at(m,a1,c-E), at(m,a1,c+E), at(m,a1-1,c+r), at(m,a0+1,c+r), at(m,a0,c+E)])}" fill="url(#${m.axis==='x'?'hullG':'hullGv'})" stroke="#aab6d3" stroke-width="2" stroke-linejoin="round"/>`;
+    for (let k = a0+2; k <= a1-2; k += 2){ const q1 = at(m,k,c-r), q2 = at(m,k,c+r); out += `<line x1="${q1[0]}" y1="${q1[1]}" x2="${q2[0]}" y2="${q2[1]}" stroke="rgba(170,182,211,.35)" stroke-width="1"/>`; }
+    for (const k of [a0+1, a1-1]){ const q1 = at(m,k,c-r), q2 = at(m,k,c+r); out += `<line x1="${q1[0]}" y1="${q1[1]}" x2="${q2[0]}" y2="${q2[1]}" stroke="#aab6d3" stroke-width="1.2"/>`; }
+    // name and real size: side modules at their far end, end nodes with side modules beside their end, others above/below
+    if (m.axis==='y'){ const xm = X(c); out += m.side==='port' ? label(xm, Y(a0) - fs - 5, 'middle', m) : label(xm, Y(a1) + fs + 3, 'middle', m); }
+    else if (m.kids && m === main[0]) out += label(X(a0) - 8, Y(c) - 2, 'end', m);
+    else if (m.kids && m === main[main.length-1]) out += label(X(a1) + 8, Y(c) - 2, 'start', m);
+    else { const xm = (X(a0)+X(a1))/2;
+      out += `<text x="${xm}" y="${Y(c-r)-5}" fill="#e7ebf4" font-size="${fs}" font-weight="700" text-anchor="middle">${m.name}</text>`;
+      out += `<text x="${xm}" y="${Y(c+r)+fs+3}" fill="#8a94aa" font-size="${fs-1}" text-anchor="middle">${fmt(m.len,1)} m × ⌀ ${fmt(m.dia,1)} m</text>`; }
+  }
+  svg.innerHTML = out;
+}
 function renderDeckTabs(){
+  clearLabel();
   const box = $('#deckTabs');
   if (G.D < 2){ box.style.display = 'none'; return; }
   box.style.display = '';
@@ -990,9 +1300,9 @@ function renderDeckTabs(){
     return `<button data-d="${d}" class="${d===curDeck?'on':''}" title="${warn?'This deck has a problem: see the checks':''}">Deck ${d+1}${d===0?' · ground':d===G.D-1?' · top':''}${warn?' ⚠':''}</button>`;
   }).join('');
 }
-function setDeck(d){ curDeck = clamp(d, 0, G.D-1); buildGrid(); renderGrid(); renderDeckTabs(); }
+function setDeck(d){ curDeck = clamp(d, 0, G.D-1); buildGrid(); renderGrid(); renderDeckTabs(); renderXsec(); renderHull(); }
 $('#deckTabs').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (b) setDeck(+b.dataset.d); });
- 
+
 function renderTools(){
   const box = $('#tools'); const R = A.R;
   const items = ZK.map(k => {
@@ -1009,7 +1319,7 @@ function renderTools(){
   items.push(`<button class="tool ${tool==='erase'?'active':''}" data-t="erase"><span class="sw" style="background:var(--open)"></span><span class="nm">Eraser (corridor)</span><span class="kb">E</span></button>`);
   box.innerHTML = items.join('');
 }
- 
+
 function renderToolHint(){
   $('#toolHint').textContent = G.D > 1
     ? 'Drag to paint · right-click to erase · hatches go on the outer wall · a ladder connects this spot to the deck above (or below, on the top deck)'
@@ -1031,7 +1341,7 @@ function renderRules(){
     ['Hearing hazard', `< ${R.noiseHazard} dBA`, SRC.acou],
   ].map(([a,b,src])=>`<li><span>${a}<br>${tag(src)}</span><span>${b}</span></li>`).join('');
 }
- 
+
 function scoreColor(v){ return v>=.85?'var(--good)':v>=.6?'var(--warn)':'var(--bad)'; }
 function renderScore(){
   const c = 2*Math.PI*50, t = A.total;
@@ -1059,7 +1369,7 @@ function renderScore(){
     `<div class="grp">${CAT_NAMES[k]}</div>` + groups[k].sort((a,b)=>order[a[0].status]-order[b[0].status]).map(([c,ix]) =>
       `<div class="ck" data-c="${ix}"><span class="ic ${c.status}">${c.status==='pass'?'✓':c.status==='warn'?'!':'✕'}</span><div><div>${c.title}</div><div class="d">${c.detail}</div></div></div>`).join('')).join('');
 }
- 
+
 function renderStats(){
   const s = A.stats;
   $('#stats').innerHTML = [
@@ -1080,7 +1390,7 @@ function renderStats(){
     ].map(([b,t])=>`<div class="stat"><b>${b}</b><span>${t}</span></div>`).join('')}</div>
     <div class="costnote">Rough estimate: ${st.name} ≈ ${fmt(st.kgPerM3,0)} kg per m³ (<a href="${st.url}" target="_blank" rel="noopener">source</a>) × $${COST.launchPerKg.toLocaleString()} per kg on Falcon Heavy (<a href="${COST.launchUrl}" target="_blank" rel="noopener">source</a>). Excludes building cost, supplies and going beyond low Earth orbit, which costs much more. Storage counts too: every m³ inside the hull is launched.</div>`;
 }
- 
+
 function highlight(list){
   if (list.length && G.D > 1 && !list.some(i => idk(i)===curDeck)) setDeck(idk(list[0]));   // jump to the deck with the problem
   cellEls.forEach(e=>e.classList.remove('hl'));
@@ -1088,38 +1398,51 @@ function highlight(list){
   const off = curDeck*G.N;
   list.forEach(i => { if (idk(i)===curDeck && cellEls[i-off]) cellEls[i-off].classList.add('hl'); });
 }
- 
+
+function mergeState(){ const b = $('#btnMerge'); if (!b || !G) return; const ok = G.D > 1; b.classList.toggle('dim', !ok);
+  b.title = ok ? "Paste a teammate's share link and take one of their decks into this layout" : 'Merging decks needs 2 or more decks (set Decks in the Mission panel)'; }
 function refresh(){
   A = analyze(); SAFE = safetyTests();
   if (overlay==='block' && !SAFE.hatch.tests.some(t => t.hatch===blockSel)) setOverlay('egress');
-  renderGrid(); renderDeckTabs(); renderSafety(); renderTools(); renderToolHint(); renderRules(); renderScore(); renderStats();
+  renderGrid(); renderDeckTabs(); renderSafety(); renderXsec(); renderTools(); renderToolHint(); renderRules(); renderScore(); renderStats();
   $('#v3spread').style.display = G.D > 1 ? '' : 'none';
+  mergeState();
   if (overlay === '3d') draw3d();
 }
 let rafPending = false;
 function refreshSoon(){ if (rafPending) return; rafPending = true; requestAnimationFrame(()=>{ rafPending=false; refresh(); }); }
- 
- 
+
+
 /* ===================== EXTRA SAFETY TESTS (shown separately, they do not change the score) ===================== */
 // 1) Radiation storm shelter. In a solar storm the crew shelters behind dense mass: water, food and supplies
-//    (NASA's Orion plan uses its stowage bags this way). We model it simply: from a box, look in each of the
-//    4 wall directions to the hull. That side is shielded if at least one storage box is in the way.
+//    (NASA's Orion plan uses its stowage bags this way). From a box, look in each of the 4 wall directions to the
+//    hull and add up the shielding mass in the way, in g/cm² (10 cm of water ≈ 10 g/cm²).
+//    NASA-STD-3001 radiation brief: vehicle shielding of at least 20 g/cm² for missions over 6 months, plus a storm
+//    shelter with an extra 10 cm water equivalent in the crew quarters. So a side counts as shielded when the supplies
+//    on it give at least 10 g/cm² extra (the hull itself is assumed to meet the 20 g/cm² vehicle level).
+//    Mass per 1 m box (estimates): storage (packed food, water, supplies) ≈ 25 g/cm², life support racks ≈ 20 g/cm².
 //    A sleep box is protected when at least 2 of its 4 sides are shielded (design rule).
 // 2) Blocked hatch. A fire or leak can block a hatch. We block each hatch in turn and re-run the escape search
 //    with the other hatches only: can everyone still get out, and how far do they walk?
 const RAD_SIDES_NEEDED = 2, RAD_PASS = .75, RAD_WARN = .5;
+const RAD_GCM2 = 10, SHIELD_GCM2 = {storage:25, life:20};   // NASA extra storm-shelter shielding (10 cm water); g/cm² per 1 m box (estimates)
+const rayGcm2 = cells => cells.reduce((t, j) => t + (SHIELD_GCM2[S.cells[j]] || 0), 0);
 let SAFE = null, blockSel = -1;
-function shieldOf(i){
-  const d = idk(i), x = ix(i), y = iy(i); let n = 0;
+// shielding mass (g/cm²) on each of the 4 sides of box i, from the box to the hull
+function shieldSides(i){
+  const d = idk(i), x = ix(i), y = iy(i), out = [];
   for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-    let nx = x+dx, ny = y+dy;
+    let nx = x+dx, ny = y+dy, g = 0;
     while (nx>=0 && ny>=0 && nx<G.W && ny<G.H && G.mask[d*G.N + ny*G.W + nx]){
-      if (S.cells[d*G.N + ny*G.W + nx]==='storage'){ n++; break; }
+      g += SHIELD_GCM2[S.cells[d*G.N + ny*G.W + nx]] || 0;
+      if (g >= RAD_GCM2) break;   // enough on this side
       nx += dx; ny += dy;
     }
+    out.push(g);
   }
-  return n;
+  return out;
 }
+const shieldOf = i => shieldSides(i).filter(g => g >= RAD_GCM2).length;   // sides with at least 10 g/cm²
 function safetyTests(){
   const n = G.D*G.N, shield = new Int8Array(n).fill(-1), sleep = [];
   for (let i=0;i<n;i++){ if (!G.mask[i] || S.cells[i]==='storage') continue; shield[i] = shieldOf(i); if (S.cells[i]==='sleep') sleep.push(i); }
@@ -1132,7 +1455,7 @@ function safetyTests(){
   const needed = S.days > 30;
   const radStatus = !sleep.length ? 'na' : frac>=RAD_PASS ? 'pass' : !needed ? 'na' : frac>=RAD_WARN ? 'warn' : 'fail';
   const rad = {shield, sleep, prot, weak, frac, best, needed, status: radStatus};
- 
+
   const walk = i => G.mask[i] && S.cells[i]!=='storage';
   const people = []; for (let i=0;i<n;i++) if (walk(i) && S.cells[i]!=='exit' && A.dist[i]>=0) people.push(i);   // boxes that can escape normally
   const tests = A.exits.map(h => {
@@ -1151,14 +1474,14 @@ const icon = st => `<span class="ic ${st}">${st==='pass'?'✓':st==='warn'?'!':s
 function radText(r){
   if (!r.sleep.length) return {t:'No sleep boxes yet', d:'Place the sleep quarters first, then this test checks how well they are shielded.', fix:''};
   const t = `${r.prot.length} of ${r.sleep.length} sleep boxes protected (${Math.round(r.frac*100)}%)`;
-  const d = `A sleep box is protected when storage (water, food, supplies) sits between it and the hull on at least ${RAD_SIDES_NEEDED} of its 4 sides. `+
+  const d = `NASA asks for an extra 10 cm of water (≈ ${RAD_GCM2} g/cm²) round the crew quarters as a storm shelter. A sleep box is protected when the supplies between it and the hull give at least ${RAD_GCM2} g/cm² on ${RAD_SIDES_NEEDED} or more of its 4 sides (1 m of storage ≈ ${SHIELD_GCM2.storage} g/cm², life support ≈ ${SHIELD_GCM2.life} g/cm²: estimates). `+
     (r.needed ? `Needed for missions over 30 days: pass at ${RAD_PASS*100}% or more, warning from ${RAD_WARN*100}%.` : 'Optional for missions of 30 days or less, which stay short enough to avoid most storm risk.');
-  const fix = r.frac>=RAD_PASS ? '' : 'Line the outer wall next to the sleep area with storage, or move sleep to the middle with storage around it.';
+  const fix = r.frac>=RAD_PASS ? '' : 'Line the outer wall next to the sleep area with storage or life support racks, or move sleep to the middle with storage around it.';
   return {t, d, fix};
 }
 function renderSafety(){
   const r = SAFE.rad, h = SAFE.hatch, rt = radText(r);
-  const best = r.best>=0 ? `Best storm-shelter spot: <b>${xy(r.best)}</b>, shielded on ${r.shield[r.best]} of 4 sides.` : '';
+  const best = r.best>=0 ? `Best storm-shelter spot: <b>${xy(r.best)}</b>, at least ${RAD_GCM2} g/cm² on ${r.shield[r.best]} of 4 sides.` : '';
   let hx;
   if (!A.exits.length) hx = {t:'No hatch to test', d:'Add a hatch first.'};
   else if (A.exits.length===1) hx = {t:'Only one hatch: if it is blocked, everyone is trapped',
@@ -1190,17 +1513,17 @@ function renderOvNote(){
     '<span class="spacer"></span><button class="small" data-ovback>✕ Back to zones</button>';
   box.querySelector('[data-ovback]').onclick = () => { setOverlay('none'); renderSafety(); };
 }
- 
+
 /* ===================== SHARE BY LINK ===================== */
 // The whole layout is packed into the link after '#': mission, shape, size and every box (run-length coded, e.g. "S4" = 4 sleep boxes).
-const CODE_OF = Object.fromEntries(Object.entries({S:'sleep', E:'exercise', H:'hygiene', F:'food', W:'work', M:'medical', T:'storage', X:'exit', L:'ladder'}).map(([k,v])=>[v,k]));
+const CODE_OF = Object.fromEntries(Object.entries({S:'sleep', E:'exercise', H:'hygiene', F:'food', W:'work', M:'medical', T:'storage', A:'life', X:'exit', L:'ladder'}).map(([k,v])=>[v,k]));
 function encodeCells(cells){
   let out = '', i = 0; const code = v => v && CODE_OF[v] ? CODE_OF[v] : '.';
   while (i < cells.length){ const c = code(cells[i]); let j = i+1; while (j < cells.length && code(cells[j])===c) j++; out += c + (j-i>1 ? j-i : ''); i = j; }
   return out;
 }
 function decodeCells(str){
-  const out = [], re = /([.SEHFWMTXL])(\d*)/g; let m;
+  const out = [], re = /([.SEHFWMTAXL])(\d*)/g; let m;
   while ((m = re.exec(str))){ const v = m[1]==='.' ? null : EX_CODE[m[1]], k = m[2] ? Math.min(+m[2], 20000) : 1; for (let q=0;q<k;q++) out.push(v); if (out.length > 20000) break; }
   return out;
 }
@@ -1220,7 +1543,7 @@ function loadFromHash(){
     S = {crew:clamp(Math.round(L.crew),1,12), days:clamp(Math.round(L.days),1,1500), shape:L.shape, a:L.a, b:L.b, height:L.height, structure:L.structure, decks:L.decks, cells:[]};
     validateGeo(); G = geometry(S);
     S.cells = Array.from({length:G.D*G.N}, (_,i) => G.mask[i] && L.cells[i] ? L.cells[i] : null);
-    cleanupLadders();
+    stripLocked(); cleanupLadders();
     if (p.get('n')) $('#saveName').value = p.get('n').slice(0,60);
     curDeck = 0; syncInputs(); buildGrid(); refresh();
     try { window.history.replaceState(null, '', location.href.split('#')[0]); } catch(e){}
@@ -1234,14 +1557,14 @@ $('#btnShare').onclick = async () => {
   openModal('share'); $('#mText').value = url;
   try { await navigator.clipboard.writeText(url); toast('Link copied: paste it anywhere to share this layout'); } catch(e){}
 };
- 
+
 /* ===================== PDF REPORT ===================== */
 // Builds a clean white report and opens the print window; choose "Save as PDF" there.
 function reportHTML(){
   const name = $('#saveName').value.trim() || 'Untitled layout', st = A.stats, sh = SHAPES[S.shape];
   const L = {...S, cells:[...S.cells]}, cv = document.createElement('canvas'); drawThumb(cv, L, 680);
   const cls = st => st==='pass'?'pass':st==='warn'?'warn':st==='fail'?'fail':'na', word = st => ({pass:'Pass', warn:'Warning', fail:'Fail', na:'Info'})[st];
-  const sizeTxt = `${S.a} m${['rect','lshape','ring'].includes(S.shape) ? ' × '+S.b+' m' : ''}`;
+  const sizeTxt = S.shape==='skylab' ? `Skylab-style: ${SKYLAB.dia} m wide, 2 decks` : S.shape==='b330' ? `B330 inflatable: ${B330.len} m long × ${B330.dia} m wide, ${G.D} deck${G.D>1?'s':''}` : S.shape==='starship' ? `Starship-style: ${STARSHIP.inner} m wide inside (${STARSHIP.outer} m ship), ${G.D} deck${G.D>1?'s':''}` : S.shape==='tube' ? `${G.modules.length} ISS module${G.modules.length>1?'s':''}: ${G.modules.map(m=>m.name).join(', ')}` : `${S.a} m${['rect','lshape','ring'].includes(S.shape) ? ' × '+S.b+' m' : ''}`;
   const rt = radText(SAFE.rad), hs = SAFE.hatch;
   const row = (k,v) => `<tr><th style="width:38%">${k}</th><td>${v}</td></tr>`;
   return `<h1>Habitat layout report: ${esc(name)}</h1>
@@ -1265,7 +1588,7 @@ function reportHTML(){
   <h2>All checks</h2>
   <table><tr><th style="width:12%">Result</th><th style="width:16%">Area</th><th>Check</th></tr>${A.checks.map(c=>`<tr><td class="${cls(c.status)} pf">${word(c.status)}</td><td>${CAT_NAMES[c.cat]}</td><td><b>${c.title}</b><br><span class="na">${c.detail}</span></td></tr>`).join('')}</table>
   <h2>Extra safety tests (not part of the score)</h2>
-  <table><tr><td class="${cls(SAFE.rad.status)} pf" style="width:12%">${word(SAFE.rad.status)}</td><td><b>Radiation storm shelter:</b> ${rt.t}<br><span class="na">${rt.d}</span>${SAFE.rad.best>=0?`<br>Best shelter spot: ${xy(SAFE.rad.best)} (${SAFE.rad.shield[SAFE.rad.best]} of 4 sides shielded).`:''}${rt.fix?`<br>Tip: ${rt.fix}`:''}</td></tr>
+  <table><tr><td class="${cls(SAFE.rad.status)} pf" style="width:12%">${word(SAFE.rad.status)}</td><td><b>Radiation storm shelter:</b> ${rt.t}<br><span class="na">${rt.d}</span>${SAFE.rad.best>=0?`<br>Best shelter spot: ${xy(SAFE.rad.best)} (${SAFE.rad.shield[SAFE.rad.best]} of 4 sides with ≥ ${RAD_GCM2} g/cm²).`:''}${rt.fix?`<br>Tip: ${rt.fix}`:''}</td></tr>
     <tr><td class="${cls(hs.status)} pf">${word(hs.status)}</td><td><b>Blocked-hatch test:</b> ${hs.tests.length ? hs.tests.map(t=>`hatch at ${xy(t.hatch)} blocked → ${t.trapped.length ? t.trapped.length+' m² trapped' : 'longest walk '+t.longest+' m'}`).join('; ') : 'no hatch'}${A.exits.length===1?' (only one hatch: if it is blocked, everyone is trapped)':''}</td></tr></table>
   <div class="foot">Rules: NASA Human Research Program 2014 (living volume, zone sizes) · Rucker &amp; Thompson 2012 · NASA-STD-3001 Vol. 2 (layout, noise limits) · NASA OCHMO-TB-035 (acoustics). Exit count, escape distance and radiation-shelter rules are design rules. Cost: ISS Destiny / Bigelow B330 mass per m³ × Falcon Heavy price per kg.</div>`;
 }
@@ -1278,7 +1601,7 @@ $('#btnReport').onclick = () => {
   } catch(e){ console.error(e); document.body.classList.remove('printing'); document.documentElement.classList.remove('printing'); toast('Could not build the report'); }
 };
 window.addEventListener('afterprint', () => { document.body.classList.remove('printing'); document.documentElement.classList.remove('printing'); });
- 
+
 /* ===================== EDITING ===================== */
 function pushHistory(){ history.push(JSON.stringify(S)); if (history.length>80) history.shift(); }
 function undo(){
@@ -1291,6 +1614,7 @@ function undo(){
 function paintAt(li, erase){          // li = cell index on the current deck
   const base = curDeck*G.N, i = base + li;
   if (li<0 || !G.mask[i]) return;
+  if (G.lock && G.lock[i]) return toast('This is the hatch ring between two modules: it must stay clear');
   const t = erase ? 'erase' : tool;
   if (t==='exit'){
     if (!isBoundary(i)) return toast('Hatches must be on the outer wall');
@@ -1309,7 +1633,7 @@ function paintAt(li, erase){          // li = cell index on the current deck
   const x0 = li%G.W, y0 = (li/G.W)|0, off = Math.floor((brush-1)/2);
   for (let dy=0; dy<brush; dy++) for (let dx=0; dx<brush; dx++){
     const x=x0-off+dx, y=y0-off+dy; if (x<0||y<0||x>=G.W||y>=G.H) continue;
-    const j=base+y*G.W+x; if (!G.mask[j]) continue;
+    const j=base+y*G.W+x; if (!G.mask[j] || (G.lock && G.lock[j])) continue;
     if (t==='erase') S.cells[j] = null;
     else if (S.cells[j] !== 'exit' && S.cells[j] !== 'ladder') S.cells[j] = t;
   }
@@ -1333,19 +1657,19 @@ window.addEventListener('pointermove', e => {
       const d = A.dist[i];
       $('#status').textContent = `${G.D>1?`Deck ${curDeck+1} · `:''}(${x}, ${y}) · ${v==='exit'?'Hatch':v==='ladder'?'Ladder':v?ZONES[v].name:'Open / corridor'} · noise ${Math.round(A.noiseMap[i])} dB · ceiling ${fmt(G.heights[i])} m · ` +
         (v==='storage' ? 'not walkable' : d<0 ? 'trapped: no way to any exit' : `${Math.round(d)} m to exit`) +
-        (overlay==='rad' && SAFE.rad.shield[i]>=0 ? ` · storage shields ${SAFE.rad.shield[i]} of 4 sides` : '');
+        (overlay==='rad' && SAFE.rad.shield[i]>=0 ? ` · shielding right/left/down/up: ${shieldSides(i).map(g => Math.round(g)).join(' / ')} g/cm² (${SAFE.rad.shield[i]} of 4 sides ≥ ${RAD_GCM2})` : '');
     }
     if (painting && tool!=='exit' && tool!=='ladder' && li !== lastPainted){ lastPainted = li; paintAt(lastPainted, eraseDrag); refreshSoon(); }
   }
 });
 window.addEventListener('pointerup', () => { if (painting && history.length && history[history.length-1] === JSON.stringify(S)) history.pop(); painting = false; lastPainted = -1; });
- 
+
 $('#tools').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b){ tool = b.dataset.t; renderTools(); } });
 $('#brush').addEventListener('click', e => { const b = e.target.closest('[data-b]'); if (!b) return; brush = +b.dataset.b; [...$('#brush').children].forEach(x=>x.classList.toggle('on', x===b)); });
 $('#overlay').addEventListener('click', e => { const b = e.target.closest('[data-o]'); if (b) setOverlay(b.dataset.o); });
 function setOverlay(o){
   overlay = o; [...$('#overlay').children].forEach(x=>x.classList.toggle('on', x.dataset.o===o));
-  renderOvNote();
+  renderOvNote(); renderXsec();
   const is3d = overlay === '3d';
   $('#gridwrap').style.display = is3d ? 'none' : '';
   $('#view3d').style.display = is3d ? '' : 'none';
@@ -1353,7 +1677,7 @@ function setOverlay(o){
   renderGrid(); }
 $('#sug').addEventListener('click', e => { const li = e.target.closest('[data-s]'); if (li) highlight(A.suggestions[+li.dataset.s].cells); });
 $('#checks').addEventListener('click', e => { const d = e.target.closest('[data-c]'); if (d) highlight(A.checks[+d.dataset.c].cells); });
- 
+
 document.addEventListener('keydown', e => {
   if (e.target.matches('input,textarea,select')) return;
   if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); return; }
@@ -1365,7 +1689,7 @@ document.addEventListener('keydown', e => {
   else return;
   renderTools();
 });
- 
+
 /* ===================== MISSION INPUTS ===================== */
 $('#inShape').innerHTML = Object.entries(SHAPES).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('');
 function syncInputs(){
@@ -1374,15 +1698,27 @@ function syncInputs(){
   const sh = SHAPES[S.shape];
   $('#lblA').textContent = sh.a[0];
   if (sh.b){ $('#wrapB').style.display=''; $('#lblB').textContent = sh.b[0]; } else $('#wrapB').style.display='none';
+  const tb = S.shape==='tube'; $('#inA').min = tb ? '1' : '4'; $('#inA').max = tb ? '5' : '30';
+  const fixedSize = ['starship','skylab','b330'].includes(S.shape);
+  $('#inA').disabled = fixedSize; $('#inB').disabled = S.shape==='b330';
+  $('#inA').title = S.shape==='starship' ? 'Starship is always 9 m wide (8 m inside)' : S.shape==='skylab' ? 'Skylab was 6.6 m wide' : S.shape==='b330' ? 'The B330 is 13.7 m long' : '';
+  if (S.shape==='skylab') $('#inA').value = SKYLAB.dia;
+  if (S.shape==='b330'){ $('#inA').value = B330.len; $('#inB').value = B330.dia; }
 }
 function validateGeo(){
   const numOr = (v, d) => (v === '' || v == null || !Number.isFinite(+v)) ? d : +v;
-  S.a = clamp(Math.round(numOr(S.a, 10)), 4, 30);
+  if (S.shape!=='tube') S.a = clamp(Math.round(numOr(S.a, 10)), 4, 30);
   if (S.shape==='rect') S.b = clamp(Math.round(numOr(S.b, 8)), 3, 30);
   if (S.shape==='ring') S.b = clamp(Math.round(numOr(S.b, 6)), 2, S.a-4);
   if (S.shape==='lshape') S.b = clamp(Math.round(numOr(S.b, 4)), 2, S.a-2);
+  if (S.shape==='tube'){ S.a = clamp(Math.round(numOr(S.a, 5)), 1, 5); S.b = 0; }
+  if (S.shape==='starship'){ S.a = STARSHIP.inner; S.b = 0; }
+  if (S.shape==='skylab'){ S.a = 7; S.b = 0; if (S.decks !== 2){ S.decks = 2; } }   // Skylab always had 2 decks
+  if (S.shape==='b330'){ S.a = 14; S.b = B330.dia; const m = b330MaxDecks(S.height);
+    if (S.decks > m){ S.decks = m; setTimeout(() => toast(`The B330 is ${B330.dia} m wide: at ${fmt(S.height,1)} m deck height it fits ${m} deck${m>1?'s':''}`), 0); } }
   S.height = clamp(numOr(S.height, 2.5), 1.8, 5);
   S.decks = clamp(Math.round(+S.decks||1), 1, 3);
+  if (S.shape==='tube' && S.decks > 1){ S.decks = 1; setTimeout(() => toast('ISS modules are 4.3–4.6 m wide: they fit one deck'), 0); }
 }
 // change = function that edits S (shape, size, height, decks). History is saved BEFORE the edit so Undo restores it exactly.
 function onGeoChange(change){
@@ -1395,7 +1731,9 @@ function onGeoChange(change){
 function blankNum(e){ const v = e.target.value.trim(); if (v === '' || !Number.isFinite(+v)) { syncInputs(); return true; } return false; }
 $('#inCrew').addEventListener('change', e => { if (blankNum(e)) return; pushHistory(); S.crew = clamp(Math.round(+e.target.value)||1,1,12); syncInputs(); refresh(); });
 $('#inDays').addEventListener('change', e => { if (blankNum(e)) return; pushHistory(); S.days = clamp(Math.round(+e.target.value)||1,1,1500); syncInputs(); refresh(); });
-$('#inShape').addEventListener('change', e => onGeoChange(() => { S.shape = e.target.value; S.structure = S.shape==='dome' ? 'inflatable' : 'rigid'; const sh = SHAPES[S.shape]; S.a = sh.a[1]; S.b = sh.b ? sh.b[1] : S.b; }));
+$('#inShape').addEventListener('change', e => onGeoChange(() => { S.shape = e.target.value; S.structure = S.shape==='dome' ? 'inflatable' : 'rigid'; const sh = SHAPES[S.shape]; S.a = sh.a[1]; S.b = sh.b ? sh.b[1] : S.b; if (S.shape==='starship' && (S.decks||1) < 2) S.decks = 2;
+      if (S.shape==='skylab'){ S.decks = 2; S.crew = SKYLAB.crew; S.days = SKYLAB.days; setTimeout(() => toast(`Mission set to Skylab's real crew: ${SKYLAB.crew} astronauts for up to ${SKYLAB.days} days (change it if you like)`), 0); }
+      if (S.shape==='b330'){ S.structure = 'inflatable'; S.decks = 2; S.crew = B330.crew; setTimeout(() => toast(`Crew set to the B330's design crew: ${B330.crew} people (change it if you like)`), 0); } }));
 $('#inA').addEventListener('change', e => blankNum(e) || onGeoChange(() => { S.a = +e.target.value; }));
 $('#inB').addEventListener('change', e => blankNum(e) || onGeoChange(() => { S.b = +e.target.value; }));
 $('#inH').addEventListener('change', e => blankNum(e) || onGeoChange(() => { S.height = +e.target.value; }));
@@ -1403,13 +1741,13 @@ $('#inStruct').addEventListener('change', e => { pushHistory(); S.structure = e.
 $('#inDecks').addEventListener('change', e => {
   const nd = +e.target.value, od = S.decks || 1;
   onGeoChange(() => { S.decks = nd; });
-  if (nd > od){ curDeck = nd-1; buildGrid(); renderGrid(); renderDeckTabs(); toast(`Deck ${nd} added: use the Ladder tool to connect it`); }
+  if (nd > od){ curDeck = nd-1; buildGrid(); renderGrid(); renderDeckTabs(); renderXsec(); toast(`Deck ${nd} added: use the Ladder tool to connect it`); }
   else if (nd < od) toast(`Removed the top deck${od-nd>1?'s':''} (Undo brings ${od-nd>1?'them':'it'} back)`);
 });
 document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
   pushHistory(); const [c,d] = b.dataset.preset.split(',').map(Number); S.crew=c; S.days=d; syncInputs(); refresh(); toast(`Rules updated for ${c} crew × ${d} days`);
 }));
- 
+
 /* ===================== AUTO-FIX ===================== */
 // Greedy local search: each round tries many small edits, keeps the one that raises the score most,
 // and repeats until nothing helps. Uses analyze() as the scoring function.
@@ -1422,7 +1760,7 @@ function seededRng(seed){ let t = seed >>> 0; return () => { t += 0x6D2B79F5; le
 function layoutHash(){ const str = JSON.stringify((S.decks||1) > 1 ? [S.crew,S.days,S.shape,S.a,S.b,S.height,S.decks,S.cells] : [S.crew,S.days,S.shape,S.a,S.b,S.height,S.cells]); let h = 2166136261; for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function shuffle(a){ for (let i=a.length-1;i>0;i--){ const j=rng()*(i+1)|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function nbrs4(i){ const d=idk(i), x=ix(i), y=iy(i), r=[]; for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx, ny=y+dy, j=d*G.N+ny*G.W+nx; if (nx>=0&&ny>=0&&nx<G.W&&ny<G.H&&G.mask[j]) r.push(j); } return r; }
- 
+
 function candidates(a){
   const C = [], cells = S.cells, n = cells.length, interior = [];
   for (let i=0;i<n;i++) if (G.mask[i]) interior.push(i);
@@ -1461,14 +1799,32 @@ function candidates(a){
       C.push({cells:[i,j], vals:[cells[j],cells[i]], label: cells[j] ? `Swapped ${zname(cells[i])} ${xy(i)} with ${zname(cells[j])} ${xy(j)}` : `Moved ${zname(cells[i])} from ${xy(i)} to ${xy(j)}`});
     }
   }
+  // 4a. not enough living volume per person: surplus storage racks become open floor (storage is not living space)
+  if (a.checks.some(c => c.cat==='volume' && c.status!=='pass'))
+    for (const z of ['storage','life']) if (a.count[z] > (a.R.zones[z]||0))
+      for (const i of shuffle(interior.filter(i => cells[i]===z)).slice(0, big ? 8 : 16)) set(i, null, `Cleared a surplus ${zname(z)} box at ${xy(i)} to give the crew more living space`);
+  // 4b. zones split into pieces or under a low ceiling: clear the stray boxes or move them next to the zone's main area
+  const nearOf = {};
+  for (const c of a.checks){
+    if (c.cat!=='zones' || c.status==='pass' || !c.cells.length) continue;
+    for (const i of shuffle([...c.cells]).slice(0, big ? 4 : 8)){
+      const z = cells[i]; if (!isZone(z)) continue;
+      if (!nearOf[z]){ const near = new Set(), stray = new Set(c.cells);
+        for (const k of interior) if (cells[k]===z && !stray.has(k)) nbrs4(k).forEach(j => { const v = cells[j]; if (v!==z && !fixed(v) && (!v || a.count[v] > (a.R.zones[v]||0)) && G.heights[j] >= MIN_CEILING) near.add(j); });
+        nearOf[z] = shuffle([...near]).slice(0, big ? 6 : 12); }
+      set(i, null, `Cleared a stray piece of ${zname(z)} at ${xy(i)}`);
+      for (const j of nearOf[z]) C.push({cells:[i,j], vals:[cells[j], z], label:`Moved ${zname(z)} from ${xy(i)} next to its main area at ${xy(j)}`});
+    }
+  }
   // 5. too much empty floor: fill open cells next to zones that are the furthest below their requirement
   if (a.stats.circ > .40) for (const i of shuffle(interior.filter(i=>!cells[i])).slice(0,12)){
     const near = nbrs4(i).map(j=>cells[j]).filter(v=>isZone(v));
     if (near.length) set(i, near[0], `Added ${zname(near[0])} at ${xy(i)} to use empty floor`);
   }
-  return C;
+  // hatch rings between modules stay clear; while an example is built its walkway (KEEP) stays clear too
+  return (G.lock || KEEP) ? C.filter(c => !c.cells.some(i => (G.lock && G.lock[i]) || (KEEP && KEEP.has(i) && c.vals[c.cells.indexOf(i)] && c.vals[c.cells.indexOf(i)] !== 'exit'))) : C;
 }
- 
+
 let fixing = false;
 async function autoFix(){
   if (fixing) return; fixing = true;
@@ -1477,19 +1833,15 @@ async function autoFix(){
   const before = A.total, log = [], changed = new Set(), t0 = performance.now();
   const beforeLayout = {...S, cells:[...S.cells]}, beforeA = A;
   rng = seededRng(layoutHash());
-  let cur = analyze(), budget = 12000;   // stop after a fixed amount of work (not time), so results are always repeatable
+  let cur = analyze(), budget = 4000;   // step 1: quick small fixes (step 2 below takes over if they are not enough)   // stop after a fixed amount of work (not time), so results are always repeatable
   // one check costs about the same per floor box, so big habitats use up the budget faster (up to 200 boxes: 1 unit per try)
   const interior = G.mask.reduce((n,m)=>n+(m?1:0), 0), unit = Math.max(1, interior / 200);
+  // an (almost) empty grid has nothing to keep: skip the small fixes and build a layout straight away
+  const placed = ZK.reduce((t,k) => t + Math.min(cur.count[k]||0, cur.R.zones[k]||0), 0), needed = ZK.reduce((t,k) => t + (cur.R.zones[k]||0), 0);
+  if (placed < .25*needed) budget = 0;
   for (let round=0; round<60 && budget > 0; round++){
-    const C = candidates(cur); let best = null;
-    budget -= C.length * unit;
-    for (const c of C){
-      const old = c.cells.map(i=>S.cells[i]);
-      c.cells.forEach((i,k)=>S.cells[i]=c.vals[k]);
-      const a = analyze();
-      if (a.objective > cur.objective + .01 && (!best || a.objective > best.a.objective)) best = {c, a};
-      c.cells.forEach((i,k)=>S.cells[i]=old[k]);
-    }
+    const {best, tried} = bestMove(cur);
+    budget -= tried * unit;
     if (!best) break;
     best.c.cells.forEach((i,k)=>{ S.cells[i]=best.c.vals[k]; changed.add(i); });
     log.push(`${best.c.label} → ${best.a.total}`);
@@ -1498,10 +1850,37 @@ async function autoFix(){
     await new Promise(r=>setTimeout(r,0));
     if (performance.now()-t0 > 30000) break;   // last-resort safety stop (normally the work budget ends first)
   }
+  // step 2: small changes did not reach 100 → keep trying from the user's layout, then from fresh designs; keep the best
+  let rebuilt = false;
+  if (cur.total < 100){
+    btn.textContent = '✨ Fixing… trying more designs'; await new Promise(r=>setTimeout(r,30));
+    const mine = [...S.cells], b = bestLayout(placed < .25*needed ? null : mine);   // nothing to keep on an empty grid
+    if (b.total > cur.total){
+      rebuilt = b.kind !== 'user' && placed >= .25*needed;
+      log.push(rebuilt ? `Small changes could not reach 100, so the layout was rearranged → ${A.total} (Undo brings yours back)` : placed < .25*needed ? `Built a full layout → ${A.total}` : `Moved zones to fix the last problems → ${A.total}`);
+      cur = A;
+    } else { S.cells = mine; A = analyze(); }
+    for (let i=0;i<S.cells.length;i++) if (S.cells[i] !== beforeLayout.cells[i]) changed.add(i);
+  }
+  // step 3: the two extra safety tests (radiation storm shelter, blocked hatch), without losing any score points
+  A = analyze();
+  const safeOK = sf => (sf.rad.status==='pass' || sf.rad.status==='na') && (sf.hatch.status==='pass' || sf.hatch.status==='na');
+  if (!safeOK(safetyTests())){
+    btn.textContent = '✨ Fixing… safety tests'; await new Promise(r=>setTimeout(r,30));
+    const keep = [...S.cells], t1 = A.total;
+    rng = seededRng(layoutHash()); safetyFinish(); A = analyze();
+    if (A.total < t1){ S.cells = keep; A = analyze(); }
+    else if (S.cells.some((v,i) => v !== keep[i])){
+      const sf = safetyTests(), word = st => st==='pass' || st==='na' ? 'passes' : st==='warn' ? 'warning' : 'still fails';
+      log.push(`Moved beds behind storage and added racks or hatches for the safety tests (radiation shelter: ${word(sf.rad.status)}, blocked hatch: ${word(sf.hatch.status)})`);
+      for (let i=0;i<S.cells.length;i++) if (S.cells[i] !== beforeLayout.cells[i]) changed.add(i);
+    }
+  }
   refresh();
+  const why = A.total < 100 ? why100() : '';
   btn.disabled = false; btn.textContent = '✨ Auto-fix'; fixing = false;
-  if (!log.length){ history.pop(); $('#fixlog').innerHTML = `<div class="fixlog">✨ Auto-fix found no single change that improves this layout (score ${A.total}).</div>`; return; }
-  $('#fixlog').innerHTML = `<div class="fixlog"><b>✨ Auto-fix: ${before} → ${A.total}</b> (+${A.total-before}) in ${log.length} change${log.length>1?'s':''}
+  if (!log.length){ history.pop(); $('#fixlog').innerHTML = `<div class="fixlog">✨ ${A.total===100 ? 'This layout already scores 100: nothing to fix.' : `Auto-fix could not improve this layout (score ${A.total})${why ? `: 100 is not possible here because ${why}` : ''}.`}</div>`; return; }
+  $('#fixlog').innerHTML = `<div class="fixlog"><b>✨ Auto-fix: ${before} → ${A.total}</b> (+${A.total-before}) in ${log.length} step${log.length>1?'s':''}${why ? `<div style="margin-top:4px">100 is not possible with these settings: ${why}. Change the crew, mission or habitat size in the Mission panel.</div>` : ''}
     <div style="margin-top:6px;display:flex;gap:6px"><button class="small" id="fixShow">Show changed cells</button><button class="small" id="fixUndo">Undo auto-fix</button><button class="small" id="fixClose">Hide</button></div>
     <ol>${log.map(l=>`<li>${l}</li>`).join('')}</ol></div>`;
   const cells = [...changed];
@@ -1512,7 +1891,7 @@ async function autoFix(){
   showBeforeAfter(beforeLayout, beforeA, {...S, cells:[...S.cells]}, A, log.length);
   toast(`Auto-fix: ${before} → ${A.total}`);
 }
- 
+
 /* Before / after comparison shown after an auto-fix */
 const deckCap = L => (L.decks||1) > 1 ? `<div style="font-size:11px;color:var(--muted)">Decks left to right: ${Array.from({length:L.decks},(_,d)=>`deck ${d+1}`).join(' · ')}</div>` : '';
 function showBeforeAfter(L0, A0, L1, A1, nChanges){
@@ -1553,81 +1932,34 @@ function showBeforeAfter(L0, A0, L1, A1, nChanges){
   card.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 $('#btnFix').onclick = autoFix;
- 
+
 /* ===================== EXAMPLES ===================== */
 // Fill S.cells from text rows (one array of rows per deck), using the letter codes in EX_CODE.
 function fillRows(decks){ decks.forEach((rows, d) => rows.forEach((row, y) => [...row].forEach((ch, x) => {
   const i = d*G.N + y*G.W + x; if (EX_CODE[ch] && G.mask[i]) S.cells[i] = EX_CODE[ch]; }))); }
-function loadExample(bad){
-  pushHistory();
-  S = {crew:6, days:180, shape:'rect', a:12, b:8, height:2.5, structure:'rigid', decks:1, cells:[]};
-  applyGeometry(null); curDeck = 0;
-  const R = (k,x0,y0,x1,y1) => { for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) S.cells[y*G.W+x]=k; };
-  if (!bad){
-    // each row of beds has a storage rack at both ends, so every bed is shielded on 2 sides (radiation storm shelter)
-    fillRows([["TSSSSSTWWWTT", "TSSSSSTWWW..", "TSSSSTTWWWTT", "X..........X", "T.MM...FFFF.", "T.MM...FFFFE", "T.HH.....EEE", "T.HH.TTTTEEE"]]);
-  } else {
-    R('sleep',0,0,3,2); R('exercise',4,0,5,2); R('work',6,0,9,1);
-    R('food',6,4,8,5); R('hygiene',9,4,10,5);
-    R('storage',0,6,11,6); R('storage',0,4,1,5);
-    R('exit',11,3,11,3);
-  }
-  syncInputs(); buildGrid(); refresh();
-  toast(bad ? 'Flawed example loaded: try fixing it!' : 'Example loaded');
-}
-// Two-deck example: noisy and "wet" zones on the ground deck, sleep / medical / work upstairs.
-function loadExample2(bad){
-  if (bad) return loadExample2Bad();
-  pushHistory();
-  S = {crew:6, days:180, shape:'rect', a:10, b:5, height:2.5, structure:'rigid', decks:2, cells:[]};
-  applyGeometry(null); curDeck = 0;
-  const R = (d,k,x0,y0,x1,y1) => { for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) S.cells[d*G.N + y*G.W + x]=k; };
-  // deck 1 (ground): galley, hygiene, gym and both main hatches. Deck 2 (upper): crew quarters lined with storage
-  // at both ends of each bunk row (radiation shelter), medical bay, workstations and a hatch. The ladder sits next to a
-  // deck-1 hatch, so if the upstairs hatch is blocked the crew can climb down and get out quickly.
-  fillRows([["FFFFTTT.HH", "FFFF....HH", "XL.......X", ".....EEEET", ".....EEEET"], ["TSSSSSSSST", "TSSSSSSSST", ".L.......X", ".MM..WWWWW", ".MM..WWWWW"]]);
-  syncInputs(); buildGrid(); refresh();
-  toast('2-deck good example loaded: switch decks with the tabs above the grid');
-}
-// Two-deck example with typical multi-floor mistakes, for demos and for auto-fix:
-//  • deck 2 has no hatch and only one ladder → only 1 way out (needs 2)
-//  • the ladder is right next to the gym, so gym noise climbs up into the sleep area
-//  • storage upstairs walls off a corner (trapped crew + medical bay nobody can reach)
-//  • hygiene next to the galley, a double-deep storage block, too little sleep space
-function loadExample2Bad(){
-  pushHistory();
-  S = {crew:6, days:180, shape:'rect', a:10, b:5, height:2.5, structure:'rigid', decks:2, cells:[]};
-  applyGeometry(null); curDeck = 0;
-  const R = (d,k,x0,y0,x1,y1) => { for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) S.cells[d*G.N + y*G.W + x]=k; };
-  // deck 1 (ground)
-  R(0,'food',0,0,3,1); R(0,'hygiene',4,0,5,1); R(0,'storage',6,0,9,1);
-  R(0,'storage',0,4,3,4); R(0,'exercise',5,3,8,4);
-  R(0,'exit',0,2,0,2);
-  // deck 2 (upper)
-  R(1,'work',0,0,4,1); R(1,'storage',5,0,5,0); R(1,'storage',5,1,9,1); R(1,'medical',6,0,7,0);
-  R(1,'sleep',0,3,3,4); R(1,'sleep',5,3,6,4);
-  // the only ladder, right beside the gym
-  R(0,'ladder',4,3,4,3); R(1,'ladder',4,3,4,3);
-  syncInputs(); buildGrid(); refresh();
-  toast('2-deck flawed example loaded: check both decks, then try Auto-fix');
-}
 // Example layouts for the non-rectangular shapes (6 crew, 180 days). Each deck is drawn as text rows:
 // S sleep · E exercise · H hygiene · F food · W work · M medical · T storage · X hatch · L ladder · . open floor · (space) outside the hull
 const SHAPE_EXAMPLES = {
+  // Rectangular module: 12 × 8 m (1 deck) and 10 × 5 m (2 decks), 6 crew, 180 days.
+  rect: {
+    one: {a:12, b:8,
+      good: [["TSSSSSTWWWAA", "TSSSSSTWWWAA", "TSSS.TTWWWTA", "X..........X", "T.MM...FFFF.", "T.MM...FFFFE", "T.HH.....EEE", "T.HH.TTTTEEE"]],
+      bad: [["SSSSEEWWWW..", "SSSSEEWWWW..", "SSSSEE......", "...........X", "TT....FFFHH.", "TT....FFFHH.", "TTTTTTTTTTTT", "............"]] },
+    two: {a:10, b:5,
+      good: [["FFFFTTT.HH", "FFFF....HH", "XL.A.....X", "...A.EEEET", "...AAAEEET"],
+        ["TSSSSSSSST", "TSSSSSSSST", ".L.......X", ".MM..WWWWW", ".MM..WWWWW"]],
+      bad: [["FFFFHHTTTT", "FFFFHHTTTT", "X.........", "....LEEEE.", "TTTT.EEEE."], ["WWWWWTMM..", "WWWWWTTTTT", "..........", "SSSSLSS...", "SSSS.SS..."]] },
+  },
   cylinder: {
     one: {a:11, b:0,
-      good: [
-        ["   TSSST   ", "  TSSSSST  ", " TSSSST..W ", "TSST...WWWW", ".......WWWW", "X.........X", ".......MMMH", ".FFFF...HHH", " FFFF..EEE ", "  FF..EEE  ", "   TTT.E   "],
-      ],
+      good: [["   TSSST   ", "  TSSSSST  ", " TSSSST..W ", "TSST...WWWW", ".......WWWW", "X.........X", ".......MMMH", ".FFFF...HHH", " FFFAAAEEE ", "  FF.AEEE  ", "   TTA.E   "]],
       bad: [
         ["   SSEEE   ", "  SSSEEEW  ", " SSS..WWWW ", "S......WWW.", "...........", "X..........", ".FFFFHHMM..", ".FFFFHH....", " TTTTTTTTT ", "  .......  ", "   .....   "],
       ],
     },
     two: {a:8, b:0,
-      good: [
-        ["  TTTT  ", " FFFF.T ", ".FFF....", "X.......", "L......X", "...HHEEE", " .HHEEE ", "  .EE.  "],
-        ["  WWWW  ", " WWWW.T ", "MMM....X", "T.SSSS.T", "L.......", "TSSSSSST", " TSSSST ", "  TSST  "],
-      ],
+      good: [["  TTTT  ", " FFFF.T ", "AFFF....", "X..A....", "L..AAA.X", "...HHEEE", " .HHEEE ", "  .EE.  "],
+        ["  WWWW  ", " WWWW.T ", "MMM....X", "T.SSSS.T", "L.......", "TSSSSSST", " TSSSST ", "  TSST  "]],
       bad: [
         ["  FFFF  ", " FFHH.. ", "...HH...", "X.......", "....LEEE", "....EEEE", " ...... ", "  ....  "],
         ["  ....  ", " ...... ", "TTTTTTTT", "WWW.....", "SSS.LSSS", "SSSS.SSS", " MM.... ", "  ....  "],
@@ -1636,18 +1968,14 @@ const SHAPE_EXAMPLES = {
   },
   dome: {
     one: {a:13, b:0,
-      good: [
-        ["    TTTTT    ", "  TSSS.WWWT  ", " TSSSS.WWWWT ", " SSSSS..WWWW ", "TSSSS....WWWT", ".............", "X...........X", "......MMMHHH.", "TFFFF.MMMHHHT", " FFFF....EEE ", " TFFF...EEET ", "  TFF..EEET  ", "    TTTTT    "],
-      ],
+      good: [["    TTTTT    ", "  TSSS.WWWT  ", " TSSSS.WWWWT ", " SSSSS..WWWW ", "TSSSS....WWWT", ".............", "X...........X", "......MMMHHH.", "TFFFF.MMMHHHT", " FFFF....EEE ", " TFFAAA.EEET ", "  TAA..EEET  ", "    TTTTT    "]],
       bad: [
         ["    .....    ", "  .SSSEEE.   ", " .SSSSEEE..  ", " SSS.......  ", "..........WWW", "..........WWW", "X............", ".FFFFHHHH....", ".FFFFHHHH....", " TTTTTTTTTTT ", " .........  ", "  .......   ", "    ...      "],
       ],
     },
     two: {a:11, b:0,
-      good: [
-        ["   TEEET   ", "  HHEEEE.  ", " HHHEEE... ", "T.........T", "TTT.....TTT", "X.........X", "WWL.....LFF", "TWWW...FFFT", " WWW..FFF. ", "  TTT.TTT  ", "   T...T   "],
-        ["           ", "     T     ", "   TSSST   ", "  TSSSSST  ", "  SSSSSSS  ", " T.SSSSS.T ", "  L.....L  ", "  TMMMM.T  ", "   T...T   ", "     T     ", "           "],
-      ],
+      good: [["   TEEET   ", "  HHEEEE.  ", " HHHEEE... ", "T.........T", "TTT.....TTT", "X.....AA..X", "WWL...AALFF", "TWWW..AFFFT", " WWW..FFF. ", "  TTT.TTT  ", "   T...T   "],
+        ["           ", "     T     ", "   TSSST   ", "  TSSSSST  ", "  SSSSSSS  ", " T.SSSSS.T ", "  L.....L  ", "  TMMMM.T  ", "   T...T   ", "     T     ", "           "]],
       bad: [
         ["   .....   ", "  .......  ", " ......... ", ".FFFHH.....", ".FFFHH.....", "X....LEEE..", ".....EEEE..", "...........", " ......... ", "  .......  ", "   .....   "],
         ["           ", "     .     ", "   .....   ", "  .SSSS..  ", "  .SSSS..  ", " ..SSL.... ", "  TTTTTTT  ", "  .......  ", "   .....   ", "     .     ", "           "],
@@ -1656,18 +1984,14 @@ const SHAPE_EXAMPLES = {
   },
   ring: {
     one: {a:14, b:6,
-      good: [
-        ["    TSSSTW    ", "   TSSSSTWW   ", "  TSSSST.WWW  ", " TSSSST..WWWW ", "TSSTX    X.WWW", "....      ...X", "X...      .MMM", "....      .MMM", "....      .HHH", ".....    ..HHH", " FFFF.....EE. ", "  FFFF..EEEE  ", "   FFF..EEE   ", "    ..TT..    "],
-      ],
+      good: [["    TSSSTW    ", "   TSSSSTWW   ", "  TSSSST.WWW  ", " TSSSST..WWWW ", "TSSTX    X.WWW", "....      ...X", "X...      .MMM", "....      .MMM", "....      .HHH", ".....    ..HHH", " FFFF.....EE. ", "  FFFA..EEEE  ", "   FAA..EEE   ", "    AATT..    "]],
       bad: [
         ["    SSSEEE    ", "   SSSSEEE.   ", "  SSS.......  ", " ......WWW... ", ".....    .....", "TTTT      TTTT", "....      ....", "....      ....", "X...      ....", ".....    .....", " FFFFHHH..... ", "  FFFFHH....  ", "   ........   ", "    ......    "],
       ],
     },
     two: {a:11, b:5,
-      good: [
-        ["   .....   ", "  FFFLWWW  ", " FFFF.WWWW ", "FFF.   .WWW", "X..     ..X", "L..     ...", "...     ..X", "HHH.   .EEE", " HHH...EEE ", "  ....EEE  ", "   .TT..   "],
-        ["   TSSST   ", "  TSSLSST  ", " TSSSSSSST ", "TSST   TSST", "TSS     ..X", "L..     TST", "...     TST", "MMM.   TSST", " MMM...TST ", "  MM.....  ", "   ..X..   "],
-      ],
+      good: [["   .....   ", "  FFFLWWW  ", " FFFF.WWWW ", "FFF.   .WWW", "X..     ..X", "L..     ...", "...     ..X", "HHH.   .EEE", " AAH...EEE ", "  AAA.EEE  ", "   .TT..   "],
+        ["   TSSST   ", "  TSSLSST  ", " TSSSSSSST ", "TSST   TSST", "TSS     ..X", "L..     TST", "...     TST", "MMM.   TSST", " MMM...TST ", "  MM.....  ", "   ..X..   "]],
       bad: [
         ["   .....   ", "  FFFHH..  ", " FFFFHH... ", "....   ....", "X..     ...", "...     ...", "...     ...", "....   .EEE", " ......LEE ", "  ....EEE  ", "   .....   "],
         ["   SSSSS   ", "  SSSSSS.  ", " ......... ", "TTTT   TTTT", "...     ...", "...     ...", "...     ...", "....   .S..", " ......LSS ", "  .......  ", "   .....   "],
@@ -1676,55 +2000,547 @@ const SHAPE_EXAMPLES = {
   },
   lshape: {
     one: {a:12, b:5,
-      good: [
-        ["TSSST       ", "TSSST       ", "TSSST       ", "X....       ", "TSSSS       ", "....X       ", "WWWW.       ", "WWWW.MMMHHHH", "...........X", "FFFFF....EEE", "FFFFF....EEE", ".TTT.....EEE"],
-      ],
+      good: [["TSSST       ", "TSSST       ", "TSSST       ", "X....       ", "TSSSS       ", "....X       ", "WWWW.       ", "WWWW.MMMHHHH", ".........AAX", "FFFFF...AAAE", "FFFFF....EEE", ".TTT.....EEE"]],
       bad: [
         ["SSSSS       ", "SSEEE       ", "SSEEE       ", ".....       ", "TTTTT       ", ".....       ", ".....       ", "X....FFFHH..", ".....FFFHH..", "............", "WWWW........", "WWWW........"],
       ],
     },
     two: {a:9, b:4,
-      good: [
-        ["FFFX     ", "FFFF     ", "TTT.     ", "....     ", "X...     ", "L......TT", "....HHEEE", "....HHEEE", "......EEX"],
-        ["TTTT     ", "SSSS     ", "SSSS     ", "SSSX     ", "SSS.     ", "L...WWWW.", "MMM..WWWW", "MMM..WWWW", "TTTT....."],
-      ],
+      good: [["FFFX     ", "FFFF     ", "TTT.     ", "....     ", "X...     ", "L..A...TT", "..AAHHEEE", "..AAHHEEE", "......EEX"],
+        ["TTTT     ", "SSSS     ", "SSSS     ", "SSSX     ", "SSS.     ", "L...WWWW.", "MMM..WWWW", "MMM..WWWW", "TTTT....."]],
       bad: [
         ["FFHH     ", "FFHH     ", "....     ", "....     ", "X...     ", ".........", "....LEEE.", "....EEEE.", "........."],
         ["....     ", "....     ", "TTTT     ", "WWW.     ", "....     ", "SSS.LSSS.", "SSSS.SSS.", "MM.......", "........."],
       ],
     },
   },
+  // ISS-style station, full US segment (7 real modules), 6 crew. Good: each module does its real job: gym and toilet in
+  // Tranquility, galley in Unity, medical bay and racks in Destiny, lab work in Kibo, crew quarters in Columbus with storage
+  // racks around the beds (radiation shelter), spacewalk hatch in Quest, hatches at every far end. Flawed: the same station with
+  // typical mistakes: beds squeezed in next to the gym, toilet beside the galley, one hatch, racks plugging the way into Kibo,
+  // no racks around the crew quarters.
+  tube: {
+    one: {a:5, b:0, crew:6,
+      good: [["                   XX  ", "                  WW.T ", "                  WW.T ", "                  WW.T ", "  XT              WW.T ", " EEEE             WW.T ", " EEEA             WW.T ", " HA.A             WW.T ", " HT.A             WW.T ", " HH.A             WW.T ", "  .T               .T  ", "  ..               ..  ", " FF.   MMMTTTT   TT..T ", "XF....................X", "FFF.T.........T.T.T...X", " FF.   TTTTTTT   TT..T ", "  ..               ..  ", "  ..               ..  ", " T..T             SSST ", " T..T             TSST ", " T..T             SSST ", "  XT              TSST ", "                  SSST ", "                   TT  "]],
+      bad: [[
+        "                   ..  ",
+        "                  WW.T ",
+        "                  WW.T ",
+        "                  WW.T ",
+        "  .T              WW.T ",
+        " EEEE             WW.T ",
+        " EEET             WW.T ",
+        " HSST             WW.T ",
+        " HSST             WW.T ",
+        " HH.T             WW.T ",
+        "  .T               .T  ",
+        "  ..               ..  ",
+        " FHH   MMMTTTT   TTTTT ",
+        "XF.....................",
+        "FFF.T.........T.T.T....",
+        " FF.   TTTTTTT   TT..T ",
+        "  ..               ..  ",
+        "  ..               ..  ",
+        " T..T             SSS. ",
+        " T..T             .SS. ",
+        " T..T             SSS. ",
+        "  .T              .SS. ",
+        "                  SSS. ",
+        "                   ..  ",
+      ]],
+    },
+  },
 };
- 
-const EX_CODE = {S:'sleep', E:'exercise', H:'hygiene', F:'food', W:'work', M:'medical', T:'storage', X:'exit', L:'ladder'};
+
+const EX_CODE = {S:'sleep', E:'exercise', H:'hygiene', F:'food', W:'work', M:'medical', T:'storage', A:'life', X:'exit', L:'ladder'};
 // Load the example for the habitat shape currently selected in the Mission panel.
 // kind: 'good' | 'bad'; decks: 1 | 2. The rectangle keeps its original hand-built examples.
-function loadExampleForShape(kind, decks){
-  $('#baCard').style.display='none'; $('#fixlog').innerHTML='';
-  const shape = $('#inShape').value || S.shape;
-  if (shape === 'rect'){
-    if (decks === 2) loadExample2(kind === 'bad'); else loadExample(kind === 'bad');
-    return;
+/* Examples follow the Mission panel: crew, mission days, shape, size, deck height and decks are kept as they are.
+   1. If a hand-made example was drawn for exactly this habitat (same shape, size and decks), start from it.
+      Otherwise build one: hatches spread round the wall, a clear walkway from every hatch, then the zones in a row
+      from the quiet end to the loud end (storage · sleep · medical · work · storage · hygiene · exercise · galley).
+   2. The auto-fix search adapts it to this crew and mission (more beds for more crew, more storage for longer missions...).
+   3. Safety polish: storage racks on the sides of unshielded beds, and extra hatches, while the score does not drop.
+   The flawed example is the good one with typical mistakes added, so Auto-fix can repair it. Same settings → same example. */
+// the single change that improves the layout most (same search as auto-fix). value = how good a layout is (auto-fix: its objective)
+/* ===================== WHICH SPACECRAFT FITS? =====================
+   For the crew, mission days and deck height in the Mission panel, every real spacecraft option is tried for real:
+   the example builder makes its best layout, and we report the score, the two safety tests, living space and launch cost.
+   Best pick = the cheapest option to launch that scores 100 (safety tests passed first). Nothing in your layout changes. */
+const FIT_OPTIONS = [
+  ...[1,2,3,4,5].map(n => ({shape:'tube', a:n, b:0, decks:1, name:`ISS station · size ${n}`, sub: STATION_SIZES[n-1]})),
+  ...[1,2,3].map(d => ({shape:'starship', a:8, b:0, decks:d, name:`Starship · ${d} deck${d>1?'s':''}`, sub:'SpaceX, 9 m wide'})),
+  {shape:'skylab', a:7, b:0, decks:2, name:'Skylab · 2 decks', sub:'NASA 1973, 6.6 m wide'},
+  ...[1,2].map(d => ({shape:'b330', a:14, b:6.7, decks:d, name:`B330 · ${d} deck${d>1?'s':''}`, sub:'Bigelow inflatable, 330 m³', structure:'inflatable'})),
+];
+let fitRunning = false, fitRows = [];
+async function fitCheck(){
+  if (fitRunning) return; fitRunning = true;
+  const S0 = {...S, cells:[...S.cells]}, H0 = history.slice(), deck0 = curDeck;
+  $('#fitModal').classList.add('on');
+  $('#fitHelp').innerHTML = `For <b>${S.crew} crew</b> on a <b>${S.days}-day</b> mission at <b>${fmt(S.height,1)} m</b> deck height, each real spacecraft option gets its best layout from the example builder. Your own layout is not changed.`;
+  $('#fitPick').innerHTML = '';
+  fitRows = FIT_OPTIONS.map(o => ({o, st:'wait'}));
+  const draw = () => {
+    const pts = st => st==='pass' || st==='na' ? '✓' : st==='warn' ? '!' : '✕';
+    $('#fitBody').innerHTML = `<table class="fit"><tr><th>Spacecraft</th><th>Fits?</th><th>Score</th><th>Safety tests</th><th>Living space / person</th><th>Launch cost</th><th></th></tr>` +
+      fitRows.map((r,k) => `<tr class="${r.best?'best':''}"><td class="n"><b>${r.o.name}</b><div class="why">${r.o.sub}</div></td>` +
+        (r.st==='wait' ? `<td colspan="6" class="why">${k===fitRows.findIndex(q=>q.st==='wait') ? 'checking…' : 'waiting'}</td>`
+        : r.st==='no' ? `<td>❌</td><td colspan="5" class="why">${esc(r.why)}</td>`
+        : `<td>${r.total===100 ? '✅' : '⚠️'}</td><td><b>${r.total}</b></td><td>${pts(r.rad)} radiation · ${pts(r.hatch)} hatch</td><td>${fmt(r.perCrew,1)} m³</td><td>${money(r.launch)}</td>` +
+          `<td><button class="small" data-fit="${k}">Use this</button></td>`) + `</tr>`).join('') + `</table>`;
+  };
+  draw();
+  try {
+    for (const r of fitRows){
+      await new Promise(res => setTimeout(res, 15));
+      const o = r.o;
+      S = {crew:S0.crew, days:S0.days, shape:o.shape, a:o.a, b:o.b, height:S0.height, structure:o.structure || 'rigid', decks:o.decks, cells:[]};
+      validateGeo(); G = geometry(S); S.cells = new Array(G.D*G.N).fill(null);
+      if (S.decks !== o.decks){ r.st = 'no'; r.why = `Only ${S.decks} deck${S.decks>1?'s':''} fit at ${fmt(S.height,1)} m deck height`; draw(); continue; }
+      const why = impossibleWhy();
+      if (why){ r.st = 'no'; r.why = why[0].toUpperCase() + why.slice(1); draw(); continue; }
+      const best = bestLayout(null); A = analyze(); const sf = safetyTests();
+      Object.assign(r, {st:'ok', total:A.total, rad:sf.rad.status, hatch:sf.hatch.status, perCrew:A.stats.perCrew, launch:A.stats.launch, safe:best.safe});
+      draw();
+    }
+  } finally {
+    S = S0; history = H0; G = geometry(S); curDeck = Math.min(deck0, G.D-1); KEEP = null; refresh(); fitRunning = false;
   }
-  const set = SHAPE_EXAMPLES[shape][decks === 2 ? 'two' : 'one'], layout = set[kind];
-  pushHistory();
-  S = {crew:6, days:180, shape, a:set.a, b:set.b, height:2.5, structure: shape==='dome' ? 'inflatable' : 'rigid', decks:layout.length, cells:[]};
-  applyGeometry(null); curDeck = 0;
-  layout.forEach((rows, d) => rows.forEach((row, y) => [...row].forEach((ch, x) => {
-    const i = d*G.N + y*G.W + x;
-    if (EX_CODE[ch] && G.mask[i]) S.cells[i] = EX_CODE[ch];
-  })));
-  syncInputs(); buildGrid(); refresh();
-  const nm = SHAPES[shape].name, shapeName = nm.startsWith('L-') ? nm : nm[0].toLowerCase() + nm.slice(1);
-  toast(`${kind==='good' ? 'Good' : 'Flawed'} ${decks===2 ? '2-deck ' : ''}example loaded for the ${shapeName}${kind==='bad' ? ': try Auto-fix' : ''}`);
+  const ok = fitRows.filter(r => r.st==='ok' && r.total===100), pool = ok.some(r => r.safe===4) ? ok.filter(r => r.safe===4) : ok;
+  if (pool.length){
+    const pick = pool.reduce((p,q) => q.launch < p.launch ? q : p); pick.best = true; draw();
+    $('#fitPick').innerHTML = `🏆 <b>Best pick: ${pick.o.name}</b>: the cheapest to launch (${money(pick.launch)}) that scores 100${pick.safe===4 ? ' and passes both safety tests' : ''}. ${ok.length} of ${fitRows.length} options reach 100.`;
+  } else {
+    const any = fitRows.filter(r => r.st==='ok');
+    $('#fitPick').innerHTML = any.length ? `No option reaches 100 for this mission. The best is <b>${any.reduce((p,q)=>q.total>p.total?q:p).o.name}</b>. Try fewer crew or a shorter mission.`
+      : `None of these spacecraft is big enough for ${S.crew} crew on a ${S.days}-day mission. Try fewer crew, a shorter mission, or a custom shape (rectangle, cylinder…) where you set the size.`;
+  }
 }
-$('#btnExGood').onclick = () => loadExampleForShape('good', 1);
-$('#btnExBad').onclick  = () => loadExampleForShape('bad', 1);
-$('#btnEx2').onclick    = () => loadExampleForShape('good', 2);
-$('#btnEx2Bad').onclick = () => loadExampleForShape('bad', 2);
+$('#btnFit').onclick = fitCheck;
+$('#fitClose').onclick = () => { if (!fitRunning) $('#fitModal').classList.remove('on'); };
+$('#fitBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-fit]'); if (!b || fitRunning) return;
+  const o = fitRows[+b.dataset.fit].o;
+  onGeoChange(() => { S.shape = o.shape; S.a = o.a; S.b = o.b; S.decks = o.decks; S.structure = o.structure || 'rigid'; });
+  $('#fitModal').classList.remove('on'); runExample('good');
+});
+let KEEP = null;   // walkway boxes kept clear while an example is being built
+function bestMove(cur, value = a => a.objective, extra = []){
+  const C = candidates(cur).concat(extra); let best = null; const v0 = value(cur);
+  for (const c of C){
+    const old = c.cells.map(i=>S.cells[i]);
+    c.cells.forEach((i,k)=>S.cells[i]=c.vals[k]);
+    const a = analyze(), v = value(a);
+    if (v > v0 + .01 && (!best || v > best.v)) best = {c, a, v};
+    c.cells.forEach((i,k)=>S.cells[i]=old[k]);
+  }
+  return {best, tried: C.length};
+}
+// share of beds shielded on 2+ sides (radiation storm shelter test), cheap enough to use inside the example search
+function bedShield(){ let n = 0, p = 0; for (let i=0;i<S.cells.length;i++) if (S.cells[i]==='sleep'){ n++; if (shieldOf(i) >= RAD_SIDES_NEEDED) p++; } return n ? p/n : 1; }
+// extra moves for the example search: a storage rack on an open side of an unshielded bed (box nearest the hull, or next to the bed)
+function radMoves(){
+  const C = []; if (S.days <= 30) return C;
+  for (let i=0, k=0; i<S.cells.length && k<24; i++){
+    if (S.cells[i] !== 'sleep' || shieldOf(i) >= RAD_SIDES_NEEDED) continue; k++;
+    const d = idk(i);
+    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const ray = []; let x = ix(i)+dx, y = iy(i)+dy;
+      while (x>=0 && y>=0 && x<G.W && y<G.H && G.mask[d*G.N+y*G.W+x]){ ray.push(d*G.N+y*G.W+x); x+=dx; y+=dy; }
+      if (rayGcm2(ray) >= RAD_GCM2) continue;
+      const ok = ray.filter(j => !fixed(S.cells[j]) && !(G.lock && G.lock[j]) && S.cells[j] !== 'sleep');
+      for (const j of new Set([ok[ok.length-1], ok[0]])) if (j !== undefined && !(KEEP && KEEP.has(j))) C.push({cells:[j], vals:['storage'], label:'storage beside a bed'});
+    }
+  }
+  return C;
+}
+// bigger moves for the example search and auto-fix step 2: re-grow a split or too-small zone as one piece from its main
+// area, into open floor first and then into zones that have more than they need
+function regrowMoves(a){
+  const C = [], cells = S.cells, done = new Set();
+  for (const c of a.checks){
+    if (c.cat !== 'zones' || c.status === 'pass') continue;
+    const m = c.title.match(/^(.+?) (is split|too small)/); if (!m) continue;
+    const z = ZK.find(k => ZONES[k].name === m[1]); if (!z || done.has(z)) continue; done.add(z);
+    const mine = []; for (let i=0;i<cells.length;i++) if (cells[i]===z) mine.push(i);
+    if (!mine.length) continue;
+    // largest piece
+    const seen = new Set(); let main = [];
+    for (const i of mine){ if (seen.has(i)) continue; const comp = [i]; seen.add(i);
+      for (let h=0; h<comp.length; h++) for (const j of nbrs4(comp[h])) if (cells[j]===z && !seen.has(j)){ seen.add(j); comp.push(j); }
+      if (comp.length > main.length) main = comp; }
+    const n = Math.max(a.R.zones[z]||0, mine.length), spare = {}; ZK.forEach(k => spare[k] = (a.count[k]||0) - (a.R.zones[k]||0));
+    const ok = (j, pass) => { if (G.lock && G.lock[j]) return false; if (KEEP && KEEP.has(j)) return false; const v = cells[j];
+      if (fixed(v) || v === z) return false; if (G.heights[j] < MIN_CEILING && z !== 'storage' && z !== 'life') return false;
+      return pass === 0 ? !v : (isZone(v) && spare[v] > 0); };
+    for (let pass=0; pass<2; pass++){
+      const take = new Set(main), q = [...main];
+      for (let h=0; h<q.length && take.size<n; h++) for (const j of nbrs4(q[h])){ if (take.size>=n) break;
+        if (take.has(j)) continue;
+        const v = cells[j];
+        if (v === z || ok(j, 0) || (pass === 1 && ok(j, 1))){ if (pass===1 && isZone(v) && v!==z){ if (spare[v] <= 0) continue; } take.add(j); q.push(j); } }
+      if (take.size < n) continue;
+      const ch = [], vals = [];
+      for (const i of mine) if (!take.has(i)){ ch.push(i); vals.push(null); }
+      for (const j of take) if (cells[j] !== z){ ch.push(j); vals.push(z); }
+      if (ch.length) C.push({cells:ch, vals, label:`Rearranged ${zname(z)} into one ${n} m² area`});
+    }
+  }
+  return C;
+}
+// move an unshielded bed to a spot that already has storage on 2+ sides (prefer spots next to the other beds)
+function bedMoves(){
+  const C = []; if (S.days <= 30) return C;
+  const spots = [];
+  for (let j=0;j<S.cells.length;j++){ const v = S.cells[j];
+    if (!G.mask[j] || v==='sleep' || v==='storage' || fixed(v) || (G.lock && G.lock[j]) || (KEEP && KEEP.has(j)) || G.heights[j] < MIN_CEILING) continue;
+    if (shieldOf(j) >= RAD_SIDES_NEEDED) spots.push([j, nbrs4(j).some(k => S.cells[k]==='sleep') ? 0 : 1]); }
+  spots.sort((p,q) => p[1]-q[1]);
+  const pick = spots.slice(0, 10).map(s => s[0]);
+  for (let i=0, k=0; i<S.cells.length && k<10; i++){
+    if (S.cells[i] !== 'sleep' || shieldOf(i) >= RAD_SIDES_NEEDED) continue; k++;
+    for (const j of pick) C.push({cells:[i,j], vals:[S.cells[j], 'sleep'], label:`Moved a bed from ${xy(i)} to ${xy(j)}, behind storage`});
+  }
+  return C;
+}
+// last step for good examples and auto-fix: make the two extra safety tests pass without losing any score points
+function safetyFinish(budget = 3000){
+  if (S.days > 30){
+    let cur = analyze(); const base = cur.total, interior = G.mask.filter(Boolean).length, unit = Math.max(1, interior/200);
+    for (let round=0; round<60 && budget>0 && bedShield() < 1; round++){
+      const C = radMoves().concat(bedMoves()); budget -= C.length*unit;
+      let best = null; const v0 = bedShield();
+      for (const c of C){
+        const old = c.cells.map(i=>S.cells[i]); c.cells.forEach((i,k)=>S.cells[i]=c.vals[k]);
+        const sh = bedShield();
+        if (sh > v0 + 1e-9){ const a = analyze(); if (a.total >= base){ const v = sh*1000 + a.objective; if (!best || v > best.v) best = {c, a, v}; } }
+        c.cells.forEach((i,k)=>S.cells[i]=old[k]);
+      }
+      if (!best) break;
+      best.c.cells.forEach((i,k)=>S.cells[i]=best.c.vals[k]); cur = best.a;
+    }
+    A = analyze();
+  }
+  safetyPolish();
+}
+// crew zones left under a low ceiling: swap each one with a full-height storage, life support or empty box, never losing score or safety
+function lowCeilingFix(){
+  const lowCrew = () => { const L = []; for (let i=0;i<S.cells.length;i++){ const v = S.cells[i];
+    if (G.mask[i] && isZone(v) && v!=='storage' && v!=='life' && G.heights[i] < MIN_CEILING) L.push(i); } return L; };
+  const pts = st => st==='pass' || st==='na' ? 2 : st==='warn' ? 1 : 0;
+  const val = () => { const a = analyze(), f = safetyTests(); return {a, v: a.total*100 + (pts(f.rad.status)+pts(f.hatch.status))*10 + a.objective/100}; };
+  for (let round=0; round<12; round++){
+    const L = lowCrew(); if (!L.length) break;
+    let cur = val(), best = null;
+    for (const i of L){
+      const z = S.cells[i];
+      for (let j=0;j<S.cells.length;j++){
+        const w = S.cells[j];
+        if (!G.mask[j] || j===i || G.heights[j] < MIN_CEILING || (G.lock && G.lock[j]) || !(w===null || w==='storage' || w==='life')) continue;
+        S.cells[j] = z; S.cells[i] = w;
+        const r = val(); if (r.v > cur.v + 1e-9 && (!best || r.v > best.v)) best = {i, j, z, w, v:r.v};
+        S.cells[j] = w; S.cells[i] = z;
+      }
+    }
+    if (!best) break;
+    S.cells[best.j] = best.z; S.cells[best.i] = best.w;
+  }
+  A = analyze();
+}
+function searchLayout(budget, pure){
+  const safe = S.days > 30 && !pure, value = a => a.objective + (safe ? 10*Math.min(1, bedShield()/RAD_PASS) : 0);
+  let cur = analyze(); const interior = G.mask.reduce((n,m)=>n+(m?1:0), 0), unit = Math.max(1, interior / 200);
+  for (let round=0; round<80 && budget > 0; round++){
+    const {best, tried} = bestMove(cur, value, (pure ? [] : radMoves()).concat(regrowMoves(cur))); budget -= tried * unit;
+    if (!best) break;
+    best.c.cells.forEach((i,k)=>S.cells[i]=best.c.vals[k]); cur = best.a;
+  }
+  return cur;
+}
+function matchSeed(){   // a hand-made example drawn for exactly this habitat
+  for (const set of Object.values(SHAPE_EXAMPLES[S.shape] || {})){
+    const L = set.good; if (L.length !== G.D || set.a !== S.a || (SHAPES[S.shape].b && set.b !== S.b)) continue;
+    let ok = L.every(rows => rows.length === G.H && rows.every(r => r.length === G.W));
+    if (ok) L.forEach((rows,d)=>rows.forEach((row,y)=>[...row].forEach((ch,x)=>{ if ((ch===' ') !== !G.mask[d*G.N+y*G.W+x]) ok = false; })));
+    if (ok) return set;
+  }
+  return null;
+}
+// true if a hatch (or a blocked box) at i would cut the walkable floor in two: its walkable neighbours would lose touch
+function splitsFloor(i){
+  const walk = j => j !== i && G.mask[j] && S.cells[j] !== 'storage' && S.cells[j] !== 'exit';
+  const nb = nbrs4(i).filter(walk); if (nb.length < 2) return false;
+  const seen = new Set([nb[0]]), q = [nb[0]], want = new Set(nb.slice(1));
+  for (let h=0; h<q.length && want.size; h++) for (const j of nbrs4(q[h]).concat(ladderLinks(q[h]))) if (!seen.has(j) && walk(j)){ seen.add(j); want.delete(j); q.push(j); }
+  return want.size > 0;
+}
+function fillFrom(L){ S.cells = new Array(G.D*G.N).fill(null); fillRows(L); stripLocked(); cleanupLadders(); }
+function bfsDist(srcs){   // walking steps on one deck from the given cells (every floor box counts as walkable)
+  const dist = new Map(), par = new Map(), q = [...srcs]; srcs.forEach(i => dist.set(i, 0));
+  for (let h=0; h<q.length; h++){ const i = q[h]; for (const j of nbrs4(i)) if (!dist.has(j)){ dist.set(j, dist.get(i)+1); par.set(j, i); q.push(j); } }
+  return {dist, par};
+}
+function buildFromScratch(v = 0){   // v = which variant (quiet end, starting point, zone order)
+  const R = getRules(S.crew, S.days, S.height), N = G.N, free = [], reserved = new Set();
+  S.cells = new Array(G.D*N).fill(null);
+  const locked = i => G.lock && G.lock[i];
+  let interiorAll = 0;
+  for (let d=0; d<G.D; d++){
+    const deck = []; for (let l=0; l<N; l++){ const i = d*N+l; if (G.mask[i]){ interiorAll++; if (!locked(i)) deck.push(i); } }
+    if (!deck.length) continue;
+    // the two far ends of the deck and its middle (hub)
+    const far = m => [...m.dist.entries()].reduce((b, e) => e[1] > b[1] ? e : b)[0];
+    const st = deck[[0, deck.length >> 1, deck.length - 1][Math.floor(v/2) % 3]];
+    let a = far(bfsDist([st])), dA = bfsDist([a]).dist, b = far({dist:dA}), dB = bfsDist([b]).dist;
+    if (v % 2){ [a, b] = [b, a]; [dA, dB] = [dB, dA]; }   // the other end is the quiet end
+    const hub = deck.reduce((h, i) => Math.max(dA.get(i), dB.get(i)) < Math.max(dA.get(h), dB.get(h)) ? i : h, deck[0]);
+    // hatches: spread out round the wall until every box is well within the escape limit (and one spare for the blocked-hatch test)
+    const wall = deck.filter(i => isBoundary(i)), ex = [];
+    const want = R.exitsRequired + 1;
+    while (ex.length < want + 3){
+      const dist = ex.length ? bfsDist(ex).dist : bfsDist([hub]).dist;
+      const worst = Math.max(...deck.map(i => dist.get(i) ?? 0));
+      if (ex.length >= want && worst <= R.maxEgress*.8) break;
+      const ok = wall.filter(i => !ex.includes(i) && !nbrs4(i).some(j => ex.includes(j)) && !splitsFloor(i));
+      if (!ok.length) break;
+      const pick = ok.reduce((p, i) => (dist.get(i) ?? 0) > (dist.get(p) ?? 0) ? i : p);
+      ex.push(pick); S.cells[pick] = 'exit';
+    }
+    // a clear walkway from every hatch to the middle of the deck
+    const {par} = bfsDist([hub]); reserved.add(hub);
+    for (const e of ex){ let i = par.get(e); while (i !== undefined && i !== hub){ reserved.add(i); i = par.get(i); } }
+    // the rest, ordered from the quiet end (a) to the loud end (b); upper decks first (quietest)
+    free.push({d, cells: deck.filter(i => S.cells[i] !== 'exit' && !reserved.has(i)).sort((p, q) => (dA.get(p)-dB.get(p)) - (dA.get(q)-dB.get(q)) || p - q)});
+  }
+  // ladders between decks, on the walkway
+  for (let d=0; d<G.D-1; d++){
+    const spot = [...reserved].filter(i => idk(i)===d && G.mask[i+N] && S.cells[i+N] !== 'exit' && !locked(i+N)).sort((p,q)=>p-q)[0];
+    if (spot !== undefined){ S.cells[spot] = S.cells[spot+N] = 'ladder'; reserved.add(spot+N); }
+  }
+  // quiet zones start on the top deck (furthest from the loud end); Skylab's crew quarters were the lower deck, so there the beds start on deck 1
+  const order = free.sort((p,q) => S.shape === 'skylab' ? p.d - q.d : q.d - p.d).flatMap(f => f.cells).filter(i => !S.cells[i] && !reserved.has(i));
+  const Z = R.zones, need = ZK.reduce((t,k) => t + (Z[k]||0), 0);
+  // living space budget: a habitat with more than 2.5× the living volume the crew needs counts as oversized, so keep
+  // the living floor (everything except storage and life support) under that and put the rest of the floor into stores
+  const nLock = G.lock ? G.lock.filter(Boolean).length : 0, nFixed = S.cells.filter(v => v==='exit' || v==='ladder').length;
+  let hSum = 0; for (let i=0;i<G.mask.length;i++) if (G.mask[i]) hSum += G.heights[i];
+  const hAvg = hSum / Math.max(1, interiorAll), maxLiving = Infinity;   // (a big habitat is only a cost note, so no cap on living space)
+  const k0 = need > order.length ? order.length/need : 1, size0 = z => Z[z] ? Math.max(1, Math.floor(Z[z]*k0)) : 0;
+  const livingZones = ZK.filter(z => z !== 'storage' && z !== 'life').reduce((t,z) => t + size0(z), 0);
+  const openTotal = clamp(maxLiving - livingZones - nFixed, Math.ceil(.17*interiorAll), Math.round(.28*interiorAll));
+  const wantOpen = Math.max(0, openTotal - reserved.size - nLock);
+  const room = Math.max(0, order.length - wantOpen), k = need > room ? room/need : 1, size = z => Z[z] ? Math.max(1, Math.floor(Z[z]*k)) : 0;
+  // spare floor: roomier work, galley and medical while the living space allows (beds stay at their size so they can all be
+  // shielded), everything else as extra storage
+  const extra = Math.max(0, room - ZK.reduce((t,z) => t + size(z), 0)), roomy = ['work','food','medical'].filter(z => size(z));
+  const livingLeft = Math.max(0, maxLiving - livingZones - nFixed - openTotal);
+  // enough living volume first: storage and life support are not living space, so in a tight habitat spare floor stays open
+  const needLiving = Math.ceil(1.03 * R.volPerCrew * S.crew / hAvg), livingNow = livingZones + nFixed + openTotal + reserved.size;
+  const keepOpen = Math.max(0, needLiving - livingNow);
+  const share = {}, toZones = Math.min(Math.floor(extra*2/3), livingLeft), base = roomy.reduce((t,z) => t + size(z), 0) || 1;
+  roomy.forEach(z => share[z] = Math.floor(toZones*size(z)/base));
+  const sz = z => size(z) + (share[z] || 0), stAll = Math.max(size('storage'), size('storage') + extra - Object.values(share).reduce((t,v) => t+v, 0) - keepOpen);
+  // quiet zones grow from the quiet end (beds first, with a ring of storage racks round them = radiation storm shelter),
+  // loud zones grow from the loud end (galley first, then a storage strip, the gym, life support and hygiene),
+  // so every zone is one compact piece and the walkways and spare storage end up in the middle.
+  const sepSt = Math.min(stAll, Math.max(2, Math.round(stAll/4)));
+  const quiet = v >= 6 ? [['sleep',sz('sleep')], ['ring',stAll - sepSt], ['work',sz('work')], ['medical',sz('medical')]]
+                       : [['sleep',sz('sleep')], ['ring',stAll - sepSt], ['medical',sz('medical')], ['work',sz('work')]];
+  const loud  = Math.floor(v/2) % 2 === 0
+    ? [['exercise',sz('exercise')], ['hygiene',sz('hygiene')], ['life',sz('life')], ['storage',sepSt], ['food',sz('food')]]   // loudest zone furthest away
+    : [['food',sz('food')], ['storage',sepSt], ['exercise',sz('exercise')], ['life',sz('life')], ['hygiene',sz('hygiene')]];
+  const rankA = new Map(order.map((i,r) => [i,r])), rankB = new Map(order.map((i,r) => [i, order.length-1-r])), left = new Set(order);
+  let storageLeft = 0;
+  const grow = (z, n, rank, list) => {
+    const ring = z === 'ring', front = new Set();
+    if (ring){ for (let i=0;i<S.cells.length;i++) if (S.cells[i]==='sleep') nbrs4(i).forEach(j => left.has(j) && front.add(j)); z = 'storage'; }
+    let got = 0;
+    for (; got<n && left.size; got++){
+      let pick = -1, pr = Infinity;
+      const fits = i => z === 'storage' || z === 'life' || G.heights[i] >= MIN_CEILING;   // crew zones need standing height
+      for (const i of front) if (left.has(i) && fits(i) && rank.get(i) < pr){ pr = rank.get(i); pick = i; }
+      if (pick < 0){ if (ring) break; for (const i of list) if (left.has(i) && fits(i)){ pick = i; break; } }
+      if (pick < 0) break;
+      left.delete(pick); front.delete(pick); S.cells[pick] = z;
+      if (!ring) for (const j of nbrs4(pick)) if (left.has(j)) front.add(j);
+    }
+    return n - got;
+  };
+  const listA = order, listB = [...order].reverse();
+  // alternate between the two ends so neither runs out of room first
+  for (let q=0; q<Math.max(quiet.length, loud.length); q++){
+    if (quiet[q]){ const r = grow(quiet[q][0], quiet[q][1], rankA, listA); if (quiet[q][0]==='ring') storageLeft += r; }
+    if (loud[q]) grow(loud[q][0], loud[q][1], rankB, listB);
+  }
+  if (storageLeft) grow('storage', storageLeft, rankA, listA);
+  for (const i of left) if (G.heights[i] < MIN_CEILING) S.cells[i] = 'storage';   // low edge under the curved wall: stores
+  cleanupLadders();
+  return reserved;
+}
+// open 1-box aisles into storage blocks so every rack can be reached (NASA V2 8014: stowage must stay accessible)
+function openAisles(){
+  for (let t=0; t<400; t++){
+    const a = analyze(); if (!a.blockedRackSet.size) return;
+    let done = false;
+    for (const r of [...a.blockedRackSet].sort((p,q)=>p-q)){
+      const n = nbrs4(r).find(j => S.cells[j]==='storage' && !a.blockedRackSet.has(j));   // a reachable rack next to it
+      if (n !== undefined){ S.cells[n] = null; done = true; break; }
+    }
+    if (!done) return;
+  }
+}
+function safetyPolish(){
+  const pts = st => st==='pass' || st==='na' ? 2 : st==='warn' ? 1 : 0;
+  let cur = analyze(); A = cur; let sf = safetyTests();
+  const start = {cells:[...S.cells], total:cur.total};
+  const free = i => !fixed(S.cells[i]) && !(G.lock && G.lock[i]) && !(KEEP && KEEP.has(i)) && S.cells[i] !== 'storage' && S.cells[i] !== 'sleep';
+  // 1. radiation: a storage rack on another side of each unshielded bed (the box nearest the hull on that side)
+  for (let pass=0; pass<60 && sf.rad.needed && sf.rad.status!=='pass'; pass++){
+    let moved = false;
+    for (const bed of sf.rad.weak){
+      const d = idk(bed);
+      for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const ray = []; let x = ix(bed)+dx, y = iy(bed)+dy;
+        while (x>=0 && y>=0 && x<G.W && y<G.H && G.mask[d*G.N+y*G.W+x]){ ray.push(d*G.N+y*G.W+x); x+=dx; y+=dy; }
+        if (rayGcm2(ray) >= RAD_GCM2) continue;
+        for (const j of ray.reverse()){ if (!free(j)) continue;
+          const old = S.cells[j]; S.cells[j] = 'storage'; const a = analyze();
+          if (a.total >= cur.total){ cur = a; A = a; moved = true; break; }
+          S.cells[j] = old; }
+        if (moved) break;
+      }
+      if (moved) break;
+    }
+    if (!moved) break;
+    A = cur; sf = safetyTests();
+  }
+  // 2. blocked-hatch test: add a hatch, or open a door in a rack wall, where it helps most
+  const big = G.mask.filter(Boolean).length > 400;
+  for (let t=0; t<(big ? 4 : 8) && pts(sf.hatch.status) < 2; t++){
+    let best = null;
+    const ok = i => G.mask[i] && isBoundary(i) && !fixed(S.cells[i]) && !(G.lock && G.lock[i]) && S.cells[i] !== 'storage' && !splitsFloor(i);
+    const wall = []; for (let i=0;i<S.cells.length;i++) if (ok(i)) wall.push(i);
+    const moves = [], hot = new Set(), doors = new Set();
+    for (const q of sf.hatch.tests) if (q.status !== 'pass'){
+      const trapped = new Set(q.trapped);
+      q.trapped.forEach(i => { if (ok(i)) hot.add(i);
+        nbrs4(i).forEach(j => { if (S.cells[j]==='storage' && nbrs4(j).some(k => !trapped.has(k) && k !== q.hatch && S.cells[k] !== 'storage' && G.mask[k])) doors.add(j); }); });
+      wall.filter(i => isFinite(q.dist[i])).sort((p,r) => q.dist[r]-q.dist[p]).slice(0, 8).forEach(i => hot.add(i));
+    }
+    doors.forEach(j => moves.push([j, null]));
+    [...hot].slice(0, big ? 10 : 24).concat(shuffle(wall.filter(i => !hot.has(i))).slice(0, big ? 8 : 24)).forEach(i => moves.push([i, 'exit']));
+    if (moves.length > (big ? 24 : 60)) moves.length = big ? 24 : 60;
+    for (const [i, v] of moves){
+      const old = S.cells[i]; S.cells[i] = v; const a = analyze();
+      if (a.total >= cur.total - (cur.total >= 100 ? 0 : 1)){ A = a; const s2 = safetyTests(), worst = Math.max(0, ...s2.hatch.tests.map(q => q.longest));
+        const val = pts(s2.hatch.status)*1000 - worst - s2.hatch.tests.reduce((n,q) => n + q.trapped.length, 0)*5 + a.objective*.01 + (v===null ? 1 : 0);
+        if (!best || val > best.val) best = {i, v, val, a}; }
+      S.cells[i] = old;
+    }
+    A = cur; if (!best) break;
+    S.cells[best.i] = best.v; cur = best.a; A = cur; sf = safetyTests();
+  }
+  A = cur;
+  if (cur.total < start.total){ S.cells = start.cells; A = analyze(); }   // the safety polish never costs score points
+}
+// Try several starting designs and keep the best: score first, then the two safety tests. Stops at 100 with both tests passed.
+// from = the user's own layout (auto-fix): tried first, so a fix that keeps their work wins when it reaches 100.
+function bestLayout(from){
+  const pts = st => st==='pass' || st==='na' ? 2 : st==='warn' ? 1 : 0, seed = matchSeed();
+  const interior = G.mask.filter(Boolean).length, big = interior > 400, budget = big ? 2500 : interior > 200 ? 4000 : 7000;
+  const tries = [];
+  if (from) tries.push({kind:'user'});
+  if (seed) tries.push({kind:'seed'});
+  const nScratch = impossibleWhy() ? (interior > 200 ? 1 : 3) : big ? 3 : 8;   // no layout can reach 100 here: one honest try is enough
+  for (let v=0; v<nScratch; v++) tries.push({kind:'scratch', v});
+  const h0 = (() => { const str = JSON.stringify([S.crew, S.days, S.shape, S.a, S.b, S.height, S.decks]); let h = 2166136261;
+    for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; })();
+  let best = null;
+  tries.forEach((t, k) => {
+    if (best && best.total === 100 && best.safe === 4) return;   // 100 and both safety tests passed: stop
+    rng = seededRng(h0 + (t.kind === 'scratch' ? 100 + t.v : t.kind === 'seed' ? 50 : 0)*7919);
+    if (t.kind === 'user') S.cells = [...from]; else if (t.kind === 'seed') fillFrom(seed.good); else { KEEP = buildFromScratch(t.v); openAisles(); }
+    const b0 = t.kind === 'user' ? budget/2 : budget;
+    try { searchLayout(b0); safetyPolish(); if (A.total < 100){ KEEP = null; searchLayout(b0/2, true); } KEEP = null; safetyFinish(); lowCeilingFix(); } finally { KEEP = null; }
+    A = analyze(); const sf = safetyTests(), safe = pts(sf.rad.status) + pts(sf.hatch.status), val = A.total*10 + safe;
+    if (!best || val > best.val) best = {val, total:A.total, safe, kind:t.kind, cells:[...S.cells]};
+  });
+  S.cells = best.cells; A = analyze();
+  return best;
+}
+// reasons no layout can reach 100 with these settings (the habitat is too small for this crew and mission), or ''
+function impossibleWhy(){
+  const R = getRules(S.crew, S.days, S.height), need = ZK.reduce((t,k) => t + (R.zones[k]||0), 0), floor = G.mask.filter(Boolean).length;
+  if (need + R.exitsRequired > floor*.85) return `this habitat is too small for ${S.crew} crew on a ${S.days}-day mission (the zones alone need about ${need} m², it has ${floor} m²)`;
+  // most living volume possible: every box except the storage and life support the mission needs
+  let hSum = 0; for (let i=0;i<G.mask.length;i++) if (G.mask[i]) hSum += G.heights[i];
+  const maxLive = hSum - ((R.zones.storage||0) + (R.zones.life||0)) * hSum/Math.max(1,floor), needLive = R.volPerCrew*S.crew;
+  if (maxLive < needLive*1.02) return `this habitat is too small to give ${S.crew} crew ${R.volPerCrew} m³ of living space each (at most about ${fmt(maxLive/S.crew,1)} m³ each fits)`;
+  return '';
+}
+// why the current layout is not 100: the habitat itself, or the first check that still fails
+function why100(){
+  const fails = A.checks.filter(c => c.status !== 'pass');
+  if (!fails.length) return '';
+  const R = getRules(S.crew, S.days, S.height), need = ZK.reduce((t,k) => t + (R.zones[k]||0), 0) + R.exitsRequired, floor = G.mask.filter(Boolean).length;
+  const tight = floor - need < floor*.2 ? `this habitat is almost full (the zones and hatches need ${need} of its ${floor} m², leaving too little walkway to reach every box)` : '';
+  return impossibleWhy() || tight || fails[0].title.toLowerCase();
+}
+// typical beginner mistakes, added to the good layout so the flawed one has the same mission and habitat
+function addMistakes(){
+  const touch = (z, put, n) => { let c = 0;
+    for (let i=0; i<S.cells.length && c<n; i++){ if (S.cells[i] !== z) continue;
+      for (const j of nbrs4(i)){ const v = S.cells[j]; if (c>=n) break; if (v===z || v===put || fixed(v) || (G.lock && G.lock[j])) continue; S.cells[j] = put; c++; } } };
+  const ex = S.cells.map((v,i)=>v==='exit'?i:-1).filter(i=>i>=0);
+  ex.slice(1).forEach(i => S.cells[i] = null);                        // only one hatch
+  touch('food', 'hygiene', 2);                                         // toilet right beside the galley
+  touch('exercise', 'sleep', 3);                                       // beds squeezed in next to the gym
+  touch('exercise', 'medical', 1);                                     // medical bay beside the gym
+  for (let i=0;i<S.cells.length;i++) if (S.cells[i]==='storage' && nbrs4(i).some(j => S.cells[j]==='sleep')) S.cells[i] = null;   // no racks round the beds
+  // a storage rack dumped in a narrow walkway, cutting part of the habitat off
+  for (let i=0;i<S.cells.length;i++) if (G.mask[i] && !S.cells[i] && !(G.lock && G.lock[i]) && splitsFloor(i)){ S.cells[i] = 'storage'; break; }
+  cleanupLadders();
+}
+function loadExampleFor(kind, quiet){
+  $('#baCard').style.display='none'; $('#fixlog').innerHTML='';
+  pushHistory(); validateGeo(); G = geometry(S); curDeck = clamp(curDeck, 0, G.D-1);
+  const seed = matchSeed(), handMade = seed && (seed.crew||6) === S.crew && S.days === 180 && S.height === 2.5;
+  { const str = JSON.stringify([S.crew, S.days, S.shape, S.a, S.b, S.height, S.decks]); let h = 2166136261;
+    for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } rng = seededRng(h >>> 0); }
+  if (handMade && kind === 'bad' && seed.bad) fillFrom(seed.bad);
+  else {
+    if (handMade) fillFrom(seed.good); else bestLayout(null);
+    if (kind === 'bad') addMistakes();
+  }
+  syncInputs(); buildGrid(); refresh();
+  if (quiet) return;
+  const where = `${S.crew} crew · ${S.days} days · ${SHAPES[S.shape].name.toLowerCase()}${G.D>1 ? ` · ${G.D} decks` : ''}`;
+  const tight = kind === 'good' && A.total < 100 ? ` 100 is not possible here: ${why100()}.` : '';
+  toast(kind === 'good' ? `Good example for ${where} (score ${A.total}).${tight}` : `Flawed example for ${where} (score ${A.total}): try Auto-fix`);
+}
+function runExample(kind){
+  const b = $(kind==='good' ? '#btnExGood' : '#btnExBad'), t = b.textContent;
+  b.disabled = true; b.textContent = 'Building…';
+  setTimeout(() => { try { loadExampleFor(kind); } finally { b.disabled = false; b.textContent = t; } }, 20);
+}
+$('#btnExGood').onclick = () => runExample('good');
+$('#btnExBad').onclick  = () => runExample('bad');
 $('#btnUndo').onclick = undo;
-$('#btnClear').onclick = () => { pushHistory(); S.cells = S.cells.map(()=>null); refresh(); };
- 
+// Clear: with several decks only the deck you are working on is cleared (its ladders too); Undo brings it back
+$('#btnClear').onclick = () => {
+  pushHistory();
+  if (G.D > 1){
+    const ladOther = () => S.cells.filter((v,i) => v==='ladder' && idk(i)!==curDeck).length, lad0 = ladOther();
+    for (let l=0; l<G.N; l++) S.cells[curDeck*G.N + l] = null;
+    cleanupLadders();   // a ladder whose other end was on this deck goes too
+    const gone = lad0 - ladOther();
+    refresh(); toast(`Cleared deck ${curDeck+1} only: the other deck${G.D>2?'s are':' is'} kept` + (gone ? ` (${gone} ladder end${gone>1?'s':''} that led to this deck removed)` : '') + '. Undo brings it back');
+  } else { S.cells = S.cells.map(()=>null); refresh(); }
+};
+function clearLabel(){ const b = $('#btnClear'); if (!b || !G) return; b.textContent = G.D > 1 ? `Clear deck ${curDeck+1}` : 'Clear';
+  b.title = G.D > 1 ? `Clear only deck ${curDeck+1}; the other decks stay` : 'Clear the whole layout'; }
+
 /* ===================== SAVE / COMPARE ===================== */
 const validLayout = L => !!(L && typeof L === 'object' && Array.isArray(L.cells) && SHAPES[L.shape] && +L.a > 0 && +L.crew > 0 && +L.days > 0);
 function loadStore(){
@@ -1793,7 +2609,7 @@ $('#saved').addEventListener('click', e => {
   } else if (e.target.matches('[data-load]')){
     pushHistory();
     S = {crew:L.crew, days:L.days, shape:L.shape, a:L.a, b:L.b, height:L.height, structure:L.structure||'rigid', decks:L.decks||1, cells:[...L.cells]};
-    G = geometry(S); curDeck = 0; syncInputs(); buildGrid(); refresh(); toast(`Loaded "${L.name}"`);
+    G = geometry(S); stripLocked(); curDeck = 0; syncInputs(); buildGrid(); refresh(); toast(`Loaded "${L.name}"`);
   } else if (e.target.matches('[data-del]')){
     saveStore(list.filter(l=>l.id!==id)); compareSel.delete(id); renderSaved();
   }
@@ -1803,7 +2619,7 @@ function analyzeLayout(L){
   const S0 = S, G0 = G;
   try {
     S = {crew:L.crew, days:L.days, shape:L.shape, a:L.a, b:L.b, height:L.height, structure:L.structure||'rigid', decks:L.decks||1, cells:[...L.cells]};
-    G = geometry(S);
+    G = geometry(S); stripLocked();
     const a = analyze();
     // extra safety tests for this layout (they need the analysis in A while they run)
     const A0 = A; let sf;
@@ -1900,18 +2716,23 @@ function renderCompare(list){
       return `<tr><th>${lab}</th>${vals.map((v,ix)=>`<td class="${v===best && new Set(vals).size>1?'best':''}">${f(v, rs[ix])}</td>`).join('')}</tr>`; }).join('') + '</tbody></table>' +
     `<div class="cmpnote" style="margin-top:6px">Green = best in that row. Tie-break order when scores are equal: passes more extra safety tests → quieter sleep → shorter escape → more living space per person → lower launch cost → fewer warnings. The safety tests never beat a higher score.</div>`;
 }
- 
+
 /* Export / import via modal (downloads are blocked in some viewers) */
 let modalMode = 'export';
 function openModal(mode){
   modalMode = mode; $('#modal').classList.add('on');
-  $('#mTitle').textContent = mode==='export' ? 'Export layouts' : mode==='share' ? 'Share this layout' : 'Import layouts';
+  $('#mTitle').textContent = mode==='export' ? 'Export layouts' : mode==='share' ? 'Share this layout' : mode==='merge' ? 'Merge a deck from a teammate' : 'Import layouts';
   $('#mHelp').textContent = mode==='export' ? 'Copy this JSON and keep it, or share it with your team. It contains every saved layout plus the current one.'
     : mode==='share' ? 'Anyone who opens this link sees this exact layout (mission, shape, decks and every zone). Nothing is uploaded: the layout is stored inside the link itself.'
+    : mode==='merge' ? `Teamwork: each person designs a different deck of the same habitat, then shares it with 🔗 Share link. Paste their link here, choose which of their decks to take and which of your decks it replaces. The whole habitat is checked again after merging, and Undo brings your deck back.`
     : 'Paste exported JSON, or choose a .json file.';
   $('#mText').value = mode==='export' ? JSON.stringify({version:1, current:snapshot('Current'), saved:loadStore()}, null, 1) : '';
   $('#mText').rows = mode==='share' ? 4 : 10;
-  $('#mOk').style.display = $('#mFile').style.display = mode==='import' ? '' : 'none';
+  $('#mOk').style.display = mode==='import' || mode==='merge' ? '' : 'none'; $('#mFile').style.display = mode==='import' ? '' : 'none';
+  $('#mOk').textContent = mode==='merge' ? 'Merge' : 'Import';
+  $('#mMerge').style.display = mode==='merge' ? '' : 'none';
+  $('#mText').placeholder = mode==='merge' ? 'Paste the share link here…' : '';
+  if (mode==='merge'){ $('#mText').rows = 3; mergePreview(); }
   $('#mCopy').style.display = mode==='export' || mode==='share' ? '' : 'none';
 }
 $('#btnExport').onclick = () => openModal('export');
@@ -1919,7 +2740,64 @@ $('#btnImport').onclick = () => openModal('import');
 $('#mClose').onclick = () => $('#modal').classList.remove('on');
 $('#mCopy').onclick = async () => { try { await navigator.clipboard.writeText($('#mText').value); toast('Copied'); } catch(e){ $('#mText').select(); toast('Press Ctrl+C to copy'); } };
 $('#mFile').onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => $('#mText').value = r.result; r.readAsText(f); };
+// ---- merge a deck from a teammate's share link (only when this layout has 2 or more decks)
+function parseLayoutLink(str){
+  str = String(str||'').trim(); const h = str.includes('#') ? str.slice(str.indexOf('#')+1) : str;
+  const p = new URLSearchParams(h); if (!p.get('g')) return null;
+  const L = {crew:+p.get('c'), days:+p.get('d'), shape:p.get('s'), a:+p.get('a'), b:+p.get('b'), height:+p.get('h'), decks:+p.get('k')||1, cells:decodeCells(p.get('g')||''), name:p.get('n')||''};
+  return validLayout(L) ? L : null;
+}
+function mergeProblem(L){   // why this link cannot be merged into the current layout, or ''
+  if (!L) return 'That is not a layout link: in the other window click 🔗 Share link and copy the whole link.';
+  if (L.shape !== S.shape) return `The link is a ${SHAPES[L.shape].name.toLowerCase()}, but yours is a ${SHAPES[S.shape].name.toLowerCase()}. Both must be the same habitat.`;
+  if (+L.a !== +S.a || (SHAPES[S.shape].b && +L.b !== +S.b)) return `The habitat size is different (link: ${L.a}${SHAPES[S.shape].b ? ' × '+L.b : ''} m, yours: ${S.a}${SHAPES[S.shape].b ? ' × '+S.b : ''} m). Use the same size.`;
+  if (Math.abs(L.height - S.height) > 1e-9) return `The deck height is different (link: ${fmt(L.height,1)} m, yours: ${fmt(S.height,1)} m). Use the same deck height.`;
+  return '';
+}
+function mergePreview(){
+  const L = parseLayoutLink($('#mText').value), bad = $('#mText').value.trim() ? mergeProblem(L) : '';
+  const opt = n => Array.from({length:n}, (_,d) => `<option value="${d}">deck ${d+1}</option>`).join('');
+  $('#mFrom').innerHTML = opt(L && !bad ? L.decks : 1); $('#mTo').innerHTML = opt(G.D);
+  $('#mTo').value = curDeck; if (L && !bad) $('#mFrom').value = Math.min(curDeck, L.decks-1);
+  $('#mFrom').disabled = !L || !!bad;
+  $('#mInfo').innerHTML = !$('#mText').value.trim() ? 'Waiting for a link.' : bad ? `⚠️ ${esc(bad)}`
+    : `✓ ${L.name ? `"${esc(L.name)}" · ` : ''}${L.decks} deck${L.decks>1?'s':''} · ${L.crew} crew · ${L.days} days. Your crew and mission stay as they are.`;
+  $('#mOk').disabled = !L || !!bad;
+}
+$('#mText').addEventListener('input', () => { if (modalMode === 'merge') mergePreview(); });
+function mergeDeck(){
+  const L = parseLayoutLink($('#mText').value), bad = mergeProblem(L);
+  if (bad) return toast(bad);
+  const from = +$('#mFrom').value, to = +$('#mTo').value, G2 = geometry(L), N2 = G2.N;
+  if (G2.W !== G.W || G2.H !== G.H) return toast('The two habitats do not line up');
+  pushHistory();
+  const ladBefore = S.cells.filter(v => v==='ladder').length;
+  let dropped = 0;
+  for (let l=0; l<G.N; l++){
+    const i = to*G.N + l, j = from*N2 + l, v = G2.mask[j] ? (L.cells[j] || null) : null;
+    if (!G.mask[i]){ if (v) dropped++; continue; }
+    S.cells[i] = v;
+  }
+  for (let l=0; l<G.N; l++){ const i = to*G.N + l; if (S.cells[i]==='exit' && !isBoundary(i)) S.cells[i] = null; }
+  // keep their ladders: where their ladder goes up/down, add the matching ladder on my deck above/below if that box is empty
+  let ladAdded = 0;
+  for (let l=0; l<G.N; l++){
+    if (L.cells[from*N2 + l] !== 'ladder') continue;
+    for (const dd of [-1, 1]){
+      const f2 = from + dd, t2 = to + dd;
+      if (f2 < 0 || f2 >= L.decks || L.cells[f2*N2 + l] !== 'ladder' || t2 < 0 || t2 >= G.D) continue;
+      const k = t2*G.N + l;
+      if (G.mask[k] && !S.cells[k] && !(G.lock && G.lock[k])){ S.cells[k] = 'ladder'; ladAdded++; }
+    }
+  }
+  stripLocked(); cleanupLadders();
+  const ladLost = Math.max(0, ladBefore - S.cells.filter(v => v==='ladder').length);
+  $('#modal').classList.remove('on'); setDeck(to); refresh();
+  toast(`Their deck ${from+1} is now your deck ${to+1} · score ${A.total}` + (ladAdded ? ` · ladder kept: a matching ladder was added on your other deck` : '') + (ladLost ? ` · ${ladLost} ladder box${ladLost>1?'es':''} without a partner deck removed, add ladders again` : '') + (dropped ? ` · ${dropped} box${dropped>1?'es':''} outside your deck left out` : ''));
+}
+$('#btnMerge').onclick = () => { if (G.D < 2) return toast('Merging needs 2 or more decks: set Decks to 2 or 3 in the Mission panel first'); openModal('merge'); };
 $('#mOk').onclick = () => {
+  if (modalMode === 'merge') return mergeDeck();
   try {
     const data = JSON.parse($('#mText').value);
     const incoming = Array.isArray(data) ? data : (data.saved || []);
@@ -1929,17 +2807,17 @@ $('#mOk').onclick = () => {
     saveStore(loadStore().concat(ok)); renderSaved(); $('#modal').classList.remove('on'); toast(`Imported ${ok.length} layout${ok.length>1?'s':''}`);
   } catch(e){ toast('That JSON could not be read'); }
 };
- 
+
 let toastT;
 function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('on'), 1800); }
- 
+
 let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(()=>{ buildGrid(); renderGrid(); }, 150); });
- 
+
 /* ===================== 3D VIEW ===================== */
 // A tiny dependency-free 3D renderer: every grid cell becomes a block, faces are projected with
 // perspective and drawn back-to-front (painter's algorithm) on a 2D canvas. Works offline.
 const v3 = {yaw: -0.65, pitch: 0.75, zoom: 1, spin: true, mode: 'zones', labels: true, spread: true, dragging: false, last: 0};
-const ZONE_H = {sleep:1.6, exercise:1.2, hygiene:2.1, food:0.9, work:1.0, medical:1.3, storage:2.2}; // block heights (m), like furniture
+const ZONE_H = {sleep:1.6, exercise:1.2, hygiene:2.1, food:0.9, work:1.0, medical:1.3, storage:2.2, life:2.0}; // block heights (m), like furniture
 const LIGHT = (() => { const v=[0.45,1,0.3], m=Math.hypot(...v); return v.map(x=>x/m); })();
 function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255, n>>8&255, n&255]; }
 function shadeCss(rgb, k, a=1){ return `rgba(${Math.round(rgb[0]*k)},${Math.round(rgb[1]*k)},${Math.round(rgb[2]*k)},${a})`; }
@@ -1979,9 +2857,9 @@ function draw3d(){
   const cv = $('#c3d'), ctx = cv.getContext('2d'), Wc = cv.width, Hc = cv.height;
   const {W,H,D,N,mask,heights} = G, cells = S.cells, hD = S.height;
   ctx.clearRect(0,0,Wc,Hc);
-  const gap = D>1 ? (v3.spread ? 2.6 : 0.15) : 0;               // space between decks (spread apart = easier to see)
+  const gap = D>1 ? (v3.spread && !G.modules ? 2.6 : 0.15) : 0;   // decks inside a lying hull stay in place               // space between decks (spread apart = easier to see)
   const base = d => d*(hD + gap), totalH = base(D-1) + hD;
-  const cx = W/2, cz = H/2, maxDim = Math.max(W, H, totalH*1.3), yMid = D===1 ? 0.8 : totalH*0.42;
+  const isShip = S.shape === 'starship' || S.shape === 'skylab', cx = W/2, cz = H/2, maxDim = isShip ? Math.max(W, (totalH + 7)*1.05) : G.modules ? (H > 8 ? Math.max(W, H)*1.05 : W*.78) : Math.max(W, H, totalH*1.3), yMid = isShip ? (totalH + 6.4)*0.45 : D===1 ? 0.8 : totalH*0.42;
   const Dd = maxDim * 1.7 / v3.zoom, f = Math.min(Wc,Hc) * 1.25;
   const cy = Math.cos(v3.yaw), sy = Math.sin(v3.yaw), cp = Math.cos(v3.pitch), sp = Math.sin(v3.pitch);
   const proj = (x,y,z) => {
@@ -2034,9 +2912,9 @@ function draw3d(){
       }
       // ladder: a yellow post up to the deck above
       if (v==='ladder' && ladderLinks(i).some(j => j > i)) addBox(x+.3, x+.7, z+.3, z+.7, y0, base(d+1)+.05, ladRgb);
-      // hull walls on the outer edge (translucent, far side only)
+      // hull walls on the outer edge (translucent, far side only). The ISS-style station draws a real round hull instead (below).
       const wh = heights[i];
-      for (const [dx,dz,pts,n] of [
+      if (!G.modules && S.shape !== 'starship' && S.shape !== 'skylab') for (const [dx,dz,pts,n] of [
         [1,0,[[x+1,y0,z],[x+1,y0+wh,z],[x+1,y0+wh,z+1],[x+1,y0,z+1]],[1,0,0]],
         [-1,0,[[x,y0,z+1],[x,y0+wh,z+1],[x,y0+wh,z],[x,y0,z]],[-1,0,0]],
         [0,1,[[x+1,y0,z+1],[x+1,y0+wh,z+1],[x,y0+wh,z+1],[x,y0,z+1]],[0,0,1]],
@@ -2046,14 +2924,76 @@ function draw3d(){
       }
     }
   }
+  // ISS-style station: round module hulls, end cones and hatch rings (far side only, see-through)
+  // a point on a round hull: axis 'x' or 'y', centre line c (grid units), position along the axis, radius, angle round the axis
+  const hullPt = (axis, c, along, r, a) => axis==='x' ? [along, G.floorDepth + r*Math.cos(a), c + r*Math.sin(a)] : [c + r*Math.sin(a), G.floorDepth + r*Math.cos(a), along];
+  if (G.modules){
+    const segs = [];   // [axis, centre, start, end, radius at start, radius at end]
+    for (const m of G.modules){ const r = m.dia/2;
+      const E = m.endR ?? HATCH_R; segs.push([m.axis, m.c, m.a0, m.a0+1, E, r]);
+      for (let k = m.a0+1; k < m.a1-1; k++) segs.push([m.axis, m.c, k, k+1, r, r]);
+      segs.push([m.axis, m.c, m.a1-1, m.a1, r, E]); }
+    for (const t of G.tunnels) segs.push([t.axis, t.c, t.a, t.a+1, HATCH_R, HATCH_R]);
+    const K = 28, ang = k => k/K*2*Math.PI;
+    for (const [ax, c, ka, kb, ra, rb] of segs) for (let k=0; k<K; k++){
+      const a0 = ang(k), a1 = ang(k+1), am = (a0+a1)/2, nrm = ax==='x' ? [0, Math.cos(am), Math.sin(am)] : [Math.sin(am), Math.cos(am), 0];
+      const quad = [hullPt(ax,c,ka,ra,a0), hullPt(ax,c,ka,ra,a1), hullPt(ax,c,kb,rb,a1), hullPt(ax,c,kb,rb,a0)];
+      addFace(ax==='x' ? quad : quad.reverse(), [150,175,230], nrm, {farOnly:true, fill:'rgba(140,165,230,.10)', stroke:'rgba(160,185,240,.10)'});
+    }
+  }
+  // Starship: round stainless hull round the decks and a nose that narrows to a tip (see-through, far side only)
+  const sky = S.shape === 'skylab', ship = S.shape === 'starship' || sky, shipR = sky ? SKYLAB.dia/2 + .2 : STARSHIP.outer/2, shipTop = totalH + .4, noseL = sky ? 1.6 : 6, shipName = sky ? 'Skylab' : 'Starship';
+  const shipPt = (y, r, a) => [cx + r*Math.sin(a), y, cz + r*Math.cos(a)];
+  const noseR = t => shipR*Math.sqrt(Math.max(0, 1 - t*t));
+  if (ship){
+    const K = 32, ys = []; for (let y=-.3; y<shipTop; y+=Math.max(.8, shipTop/8)) ys.push(y); ys.push(shipTop);
+    const segs = []; for (let k=0; k<ys.length-1; k++) segs.push([ys[k], ys[k+1], shipR, shipR]);
+    for (let k=0; k<6; k++){ const t0 = k/6, t1 = (k+1)/6; segs.push([shipTop + t0*noseL, shipTop + t1*noseL, noseR(t0), noseR(t1)]);
+      if (sky) segs.push([-.3 - t1*1.6, -.3 - t0*1.6, noseR(t1), noseR(t0)]); }   // Skylab: domed bottom too
+    for (const [y0, y1, r0, r1] of segs) for (let k=0; k<K; k++){
+      const a0 = k/K*2*Math.PI, a1 = (k+1)/K*2*Math.PI, am = (a0+a1)/2;
+      addFace([shipPt(y0,r0,a0), shipPt(y1,r1,a0), shipPt(y1,r1,a1), shipPt(y0,r0,a1)], [190,196,210], [Math.sin(am), 0, Math.cos(am)],
+        {farOnly:true, fill:'rgba(200,206,220,.10)', stroke:'rgba(210,216,230,.10)'});
+    }
+  }
   faces.sort((a,b)=>b.depth-a.depth);
   for (const fc of faces){
     ctx.beginPath(); fc.P.forEach((p,k)=> k ? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1])); ctx.closePath();
     ctx.fillStyle = fc.fill; ctx.fill(); ctx.strokeStyle = fc.stroke; ctx.lineWidth = fc.lw; ctx.stroke();
   }
+  if (ship){   // rings, a few lines along the body and the nose, and the name
+    const K = 48, ring = (y, r, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath();
+      for (let k=0; k<=K; k++){ const q = proj(...shipPt(y, r, k/K*2*Math.PI)); k ? ctx.lineTo(q[0],q[1]) : ctx.moveTo(q[0],q[1]); } ctx.stroke(); };
+    ring(-.3, shipR, 1.6, 'rgba(220,226,240,.7)'); ring(shipTop, shipR, 1.4, 'rgba(220,226,240,.55)');
+    for (let d=1; d<D; d++) ring(base(d)-.05, shipR, 1, 'rgba(220,226,240,.25)');
+    for (let k=1; k<6; k++) ring(shipTop + k/6*noseL, noseR(k/6), 1, 'rgba(220,226,240,.25)');
+    ctx.strokeStyle = 'rgba(220,226,240,.25)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let k=0; k<8; k++){ const a = k/8*2*Math.PI; let q = proj(...shipPt(-.3, shipR, a)); ctx.moveTo(q[0],q[1]); q = proj(...shipPt(shipTop, shipR, a)); ctx.lineTo(q[0],q[1]);
+      for (let j=1; j<=12; j++){ const t = j/12; q = proj(...shipPt(shipTop + t*noseL, noseR(t), a)); ctx.lineTo(q[0],q[1]); } }
+    ctx.stroke();
+    if (v3.labels){ const dpr = Wc / cv.getBoundingClientRect().width; ctx.font = `700 ${Math.round(12*dpr)}px system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+      const q = proj(cx, shipTop + noseL + .8, cz), w = ctx.measureText(shipName).width + 14*dpr, hh = 20*dpr;
+      ctx.fillStyle = 'rgba(90,170,255,.92)'; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(q[0]-w/2, q[1]-hh/2, w, hh, 6*dpr); else ctx.rect(q[0]-w/2, q[1]-hh/2, w, hh); ctx.fill();
+      ctx.fillStyle = '#0b0e15'; ctx.fillText(shipName, q[0], q[1]+.5); }
+  }
+  // station: hull rings at every module joint and lines along the modules (near side too, so the round shape is always visible)
+  if (G.modules){
+    const K = 40;
+    for (const m of G.modules){ const r = m.dia/2, P3 = (along, rr, a) => proj(...hullPt(m.axis, m.c, along, rr, a));
+      const ring = (along, rr, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath();
+        for (let k=0; k<=K; k++){ const q = P3(along, rr, k/K*2*Math.PI); k ? ctx.lineTo(q[0],q[1]) : ctx.moveTo(q[0],q[1]); } ctx.stroke(); };
+      const E = m.endR ?? HATCH_R; ring(m.a0, E, 1.6, 'rgba(190,210,255,.7)'); ring(m.a1, E, 1.6, 'rgba(190,210,255,.7)');
+      ring(m.a0+1, r, 1.4, 'rgba(170,195,250,.55)'); ring(m.a1-1, r, 1.4, 'rgba(170,195,250,.55)');
+      for (let k = m.a0+3; k < m.a1-1; k += 2) ring(k, r, 1, 'rgba(170,195,250,.18)');
+      ctx.strokeStyle = 'rgba(170,195,250,.22)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let k=0; k<8; k++){ const a = k/8*2*Math.PI, p1 = P3(m.a0, E, a), p2 = P3(m.a0+1, r, a), p3 = P3(m.a1-1, r, a), p4 = P3(m.a1, E, a);
+        ctx.moveTo(p1[0],p1[1]); ctx.lineTo(p2[0],p2[1]); ctx.lineTo(p3[0],p3[1]); ctx.lineTo(p4[0],p4[1]); }
+      ctx.stroke();
+    }
+  }
   // outline of the hull rim of every deck (near side too, as a thin line, so the shape is always visible)
   ctx.strokeStyle = 'rgba(170,195,250,.45)'; ctx.lineWidth = 1.2; ctx.beginPath();
-  for (let d=0; d<D; d++) for (let z=0; z<H; z++) for (let x=0; x<W; x++){ const i=d*N+z*W+x; if (!mask[i]) continue; const wh = base(d) + heights[i];
+  if (!G.modules && S.shape !== 'starship' && S.shape !== 'skylab') for (let d=0; d<D; d++) for (let z=0; z<H; z++) for (let x=0; x<W; x++){ const i=d*N+z*W+x; if (!mask[i]) continue; const wh = base(d) + heights[i];
     for (const [dx,dz,a,b] of [[1,0,[x+1,z],[x+1,z+1]],[-1,0,[x,z],[x,z+1]],[0,1,[x,z+1],[x+1,z+1]],[0,-1,[x,z],[x+1,z]]]){
       if (valAt(d,x+dx,z+dz) !== undefined) continue;
       const p = proj(a[0],wh,a[1]), q = proj(b[0],wh,b[1]); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); } }
@@ -2083,6 +3023,16 @@ function draw3d(){
       }
     }
   }
+  drawModuleTags(ctx, proj, cz, Wc / cv.getBoundingClientRect().width);
+}
+// module names of the ISS-style station, drawn last and above the hull so zone labels never hide them
+function drawModuleTags(ctx, proj, cz, dpr){
+  if (!G.modules || !v3.labels) return;
+  ctx.font = `700 ${Math.round(12*dpr)}px system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const m of G.modules){ const mid = (m.a0+m.a1)/2, q = m.axis==='x' ? proj(mid, G.floorDepth + m.dia/2 + 1.3, m.c) : proj(m.c, G.floorDepth + m.dia/2 + 1.3, mid), w = ctx.measureText(m.name).width + 14*dpr, h = 20*dpr;
+    ctx.fillStyle = 'rgba(90,170,255,.92)'; ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(q[0]-w/2, q[1]-h/2, w, h, 6*dpr); else ctx.rect(q[0]-w/2, q[1]-h/2, w, h);
+    ctx.fill(); ctx.fillStyle = '#0b0e15'; ctx.fillText(m.name, q[0], q[1]+.5); }
 }
 function drawTag(ctx, text, p, dpr){
   const w = ctx.measureText(text).width + 10*dpr, h = 17*dpr;
@@ -2111,11 +3061,11 @@ function drawTag(ctx, text, p, dpr){
     [...$('#v3mode').children].forEach(x=>x.classList.toggle('on', x===b)); renderGrid(); draw3d(); });
   window.addEventListener('resize', () => { if (overlay==='3d'){ resize3d(); draw3d(); } });
 })();
- 
+
 /* ===================== TUTORIAL ===================== */
 const TOUR = [
   {sel:'#cardMission', title:'1. Describe the mission', body:'Set the crew size, mission length, habitat shape and number of <b>decks</b> (floors). The rules (living space, zone sizes, noise limits) change automatically, so try the preset buttons. The <b>example buttons</b> at the top load an example for the shape you pick here.'},
-  {sel:'#cardTools',   title:'2. Pick a zone', body:'Choose a zone (or press keys 1–7). <b>Hatch</b> places an emergency exit on the outer wall, <b>Ladder</b> connects decks, and the eraser makes open corridor. Each zone shows how many m² you have versus how many are needed.'},
+  {sel:'#cardTools',   title:'2. Pick a zone', body:'Choose a zone (or press keys 1–8). <b>Hatch</b> places an emergency exit on the outer wall, <b>Ladder</b> connects decks, and the eraser makes open corridor. Each zone shows how many m² you have versus how many are needed.'},
   {sel:'#gridwrap',    title:'3. Paint the layout', body:'Drag on the grid to paint and right-click to erase. Switch to <b>Noise map</b> or <b>Exit paths</b> above the grid to see loud spots and escape routes, or <b>🧊 3D view</b> to see your habitat in 3D.'},
   {sel:'#cardScore',   title:'4. Read your score', body:'The score updates live and shows the cost estimate under the grid. Under <b>Top improvements</b>, click a suggestion to highlight the cells it is about.'},
   {sel:'#btnFix',      title:'5. Auto-fix & compare', body:'Stuck? <b>✨ Auto-fix</b> improves the layout step by step and lists every change (Undo restores it). Save versions under <b>Save &amp; compare</b> to compare them side by side.'},
@@ -2152,14 +3102,13 @@ $('#tSkip').onclick = tourEnd;
 $('#btnHelp').onclick = () => tourShow(0);
 document.addEventListener('keydown', e => { if (tourI>=0 && e.key==='Escape') tourEnd(); });
 window.addEventListener('resize', () => { if (tourI>=0) tourShow(tourI); });
- 
+
 /* ===================== INIT ===================== */
 G = geometry(S); S.cells = new Array(G.W*G.H).fill(null);
-try { syncInputs(); buildGrid(); loadExample(false); history = []; if (location.hash.includes('g=')){ loadFromHash(); history = []; } }
+try { G = geometry(S); syncInputs(); buildGrid(); loadExampleFor('good', true); history = []; if (location.hash.includes('g=')){ loadFromHash(); history = []; } }
 finally { renderSaved(); }
 let tourDone = false; try { tourDone = localStorage.getItem('habitat-tour-done') === '1'; } catch(e){}
 if (!tourDone) setTimeout(() => tourShow(0), 500);
 </script>
 </body>
 </html>
- 
